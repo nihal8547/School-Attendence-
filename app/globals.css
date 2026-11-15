@@ -905,3 +905,11 @@ code {
   border-radius: 4px;
   color: #c026d3;
 }
+
+/* Per-student status label + card tint */
+.student-card.is-present { border-color: #86efac; background: #f0fdf4; }
+.student-card.is-absent { border-color: #fca5a5; background: #fef2f2; }
+.status-label { font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.status-label.p { background: #dcfce7; color: #166534; }
+.status-label.a { background: #fee2e2; color: #991b1b; }
+.student-card { gap: 10px; } .student-card .student-info { flex: 1; min-width: 0; }

@@ -114,13 +114,17 @@ export default function AttendanceForm({
           const isPresent = marks[s.id] === 'P';
           const isAbsent = marks[s.id] === 'A';
           return (
-            <div key={s.id} className="student-card">
+            <div key={s.id} className={`student-card ${isPresent ? 'is-present' : 'is-absent'}`}>
               <div className="student-info">
                 <div className="student-roll">#{s.roll}</div>
                 <div className="student-name" title={s.name}>
                   {s.name}
                 </div>
               </div>
+
+              <span className={`status-label ${isPresent ? 'p' : 'a'}`}>
+                {isPresent ? '✓ Present' : '✕ Absent'}
+              </span>
 
               <div className="mark">
                 <button
