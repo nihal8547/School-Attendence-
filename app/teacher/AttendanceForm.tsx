@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 
-type Stu = { id: number; roll: number; name: string; status: 'P' | 'A' };
+type Mark = 'P' | 'A' | null;
+type Stu = { id: number; roll: number; name: string; status: Mark };
 
 export default function AttendanceForm({
   classId,
@@ -15,7 +16,7 @@ export default function AttendanceForm({
   session: string;
   students: Stu[];
 }) {
-  const [marks, setMarks] = useState<Record<number, 'P' | 'A'>>(
+  const [marks, setMarks] = useState<Record<number, Mark>>(
     Object.fromEntries(students.map((s) => [s.id, s.status]))
   );
   const [busy, setBusy] = useState(false);
@@ -23,6 +24,7 @@ export default function AttendanceForm({
 
   const presentCount = students.filter((s) => marks[s.id] === 'P').length;
   const absentCount = students.filter((s) => marks[s.id] === 'A').length;
+  const unmarkedCount = students.length - presentCount - absentCount;
 
   const setStatus = (id: number, v: 'P' | 'A') => {
     setMarks((m) => ({ ...m, [id]: v }));
@@ -33,6 +35,10 @@ export default function AttendanceForm({
   };
 
   async function submit() {
+    if (unmarkedCount > 0) {
+      setResult({ ok: false, text: `${unmarkedCount} student(s) are not marked yet. Please mark everyone Present or Absent.` });
+      return;
+    }
     if (
       !confirm(
         `Submit ${session.toUpperCase()} attendance?\n\n• ${presentCount} Present\n• ${absentCount} Absent\n\nParents of marked students will receive a WhatsApp message.`
@@ -85,6 +91,12 @@ export default function AttendanceForm({
             <span className="stat-dot a" />
             <span>{absentCount} Absent</span>
           </span>
+          {unmarkedCount > 0 && (
+            <span className="stat-pill">
+              <span className="stat-dot" style={{ background: '#94a3b8' }} />
+              <span>{unmarkedCount} Not marked</span>
+            </span>
+          )}
           <span className="muted">Total: {students.length}</span>
         </div>
 
@@ -114,7 +126,7 @@ export default function AttendanceForm({
           const isPresent = marks[s.id] === 'P';
           const isAbsent = marks[s.id] === 'A';
           return (
-            <div key={s.id} className={`student-card ${isPresent ? 'is-present' : 'is-absent'}`}>
+            <div key={s.id} className={`student-card ${isPresent ? 'is-present' : isAbsent ? 'is-absent' : 'is-unmarked'}`}>
               <div className="student-info">
                 <div className="student-roll">#{s.roll}</div>
                 <div className="student-name" title={s.name}>
@@ -122,8 +134,8 @@ export default function AttendanceForm({
                 </div>
               </div>
 
-              <span className={`status-label ${isPresent ? 'p' : 'a'}`}>
-                {isPresent ? '✓ Present' : '✕ Absent'}
+              <span className={`status-label ${isPresent ? 'p' : isAbsent ? 'a' : 'u'}`}>
+                {isPresent ? '✓ Present' : isAbsent ? '✕ Absent' : 'Not marked'}
               </span>
 
               <div className="mark">

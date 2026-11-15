@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/session';
 import { getLiveWaStatus } from '@/lib/wa';
 import { todayIST } from '@/lib/n8n';
 import AttendanceForm from '../AttendanceForm';
+import AutoSubmitForm from './AutoSubmitForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +68,7 @@ export default async function TeacherHome({
       )}
 
       <div className="card">
-        <form className="row" method="get">
+        <AutoSubmitForm className="row">
           <label>
             Class
             <select name="class" defaultValue={classId}>
@@ -95,7 +96,7 @@ export default async function TeacherHome({
           <button className="ghost" type="submit" style={{ minWidth: 90 }}>
             Load
           </button>
-        </form>
+        </AutoSubmitForm>
       </div>
 
       {sent && (
@@ -109,7 +110,7 @@ export default async function TeacherHome({
         classId={classId}
         date={date}
         session={session}
-        students={students.map((x) => ({ id: x.id, roll: x.roll_no, name: x.name, status: x.status ?? 'P' }))}
+        students={students.map((x) => ({ id: x.id, roll: x.roll_no, name: x.name, status: x.status ?? null }))}
       />
     </>
   );

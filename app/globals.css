@@ -973,3 +973,6 @@ html, body, button, input, select, textarea, table, th, td, code, pre, kbd, summ
 @keyframes auth-spin { to { transform: rotate(360deg); } }
 .auth-alert { display: flex; align-items: center; gap: 10px; background: var(--red-light); color: var(--red-ink); border: 1px solid var(--red-border); border-radius: 12px; padding: 11px 14px; font-size: 14px; font-weight: 600; }
 .auth-foot { text-align: center; color: var(--muted); font-size: 13.5px; margin: 24px 0 0; }
+
+.status-label.u { color: var(--muted); background: #f1f5f9; }
+.student-card.is-unmarked { border-color: var(--line); background: #fff; }
