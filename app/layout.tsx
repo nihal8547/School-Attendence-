@@ -1,4 +1,5 @@
 import type { Viewport } from 'next';
+import '@fontsource-variable/open-sans';
 import './globals.css';
 import { getSession } from '@/lib/session';
 import AppShell from '@/components/AppShell';
