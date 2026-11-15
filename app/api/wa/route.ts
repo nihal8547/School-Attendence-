@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { q } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { callN8n } from '@/lib/n8n';
+import { saveWaStatus } from '@/lib/wa';
 
 export async function POST(req: Request) {
   const s = await getSession();
@@ -24,6 +25,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'n8n webhook not found. Make sure the workflow "Attendance · WhatsApp Connect" is published.' }, { status: 502 });
   }
   if (!r.ok) return NextResponse.json({ ok: false, error: r.data?.error || `n8n responded ${r.status}` }, { status: 502 });
+  if (action === 'status' || action === 'logout') {
+    const st = r.data?.wa_status === 'connected' ? 'connected' : 'disconnected';
+    await saveWaStatus(s.uid, st);
+  }
   return NextResponse.json(r.data);
 }
 

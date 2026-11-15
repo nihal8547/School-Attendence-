@@ -1,12 +1,13 @@
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
+import { getLiveWaStatus } from '@/lib/wa';
 import ConnectPanel from './ConnectPanel';
 
 export const dynamic = 'force-dynamic';
 
 export default async function WhatsAppPage() {
   const s = await requireRole('teacher');
-  const [me] = await q(`SELECT wa_status FROM att.users WHERE id = $1`, [s.uid]);
+  const me = { wa_status: await getLiveWaStatus(s.uid) };
 
   return (
     <>

@@ -23,7 +23,12 @@ export default function ConnectPanel({ initial }: { initial: 'connected' | 'disc
     timer.current = null;
   };
 
-  useEffect(() => stop, []);
+  useEffect(() => {
+    call('status').then((s) => {
+      if (s?.ok) setStatus(s.wa_status === 'connected' ? 'connected' : 'disconnected');
+    });
+    return stop;
+  }, []);
 
   async function connect() {
     setBusy(true);

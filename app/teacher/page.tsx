@@ -1,5 +1,6 @@
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
+import { getLiveWaStatus } from '@/lib/wa';
 import { todayIST } from '@/lib/n8n';
 import AttendanceForm from './AttendanceForm';
 
@@ -13,7 +14,7 @@ export default async function TeacherHome({
   const s = await requireRole('teacher');
   const sp = await searchParams;
   const classes = await q(`SELECT id, name FROM att.classes WHERE teacher_id = $1 ORDER BY name`, [s.uid]);
-  const [me] = await q(`SELECT wa_status FROM att.users WHERE id = $1`, [s.uid]);
+  const me = { wa_status: await getLiveWaStatus(s.uid) };
 
   if (!classes.length) {
     return (
