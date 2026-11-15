@@ -7,10 +7,16 @@ export const dynamic = 'force-dynamic';
 export default async function WhatsAppPage() {
   const s = await requireRole('teacher');
   const [me] = await q(`SELECT wa_status FROM att.users WHERE id = $1`, [s.uid]);
+
   return (
     <>
-      <h1>My WhatsApp</h1>
-      <p className="muted">Parent messages are sent from your own WhatsApp number. Scan the QR code with WhatsApp → Settings → Linked devices → Link a device.</p>
+      <div style={{ marginBottom: 20 }}>
+        <h1>WhatsApp Integration</h1>
+        <p className="muted" style={{ margin: 0 }}>
+          Parent messages are sent directly from your verified WhatsApp account to ensure parents recognize the sender.
+        </p>
+      </div>
+
       <ConnectPanel initial={me?.wa_status === 'connected' ? 'connected' : 'disconnected'} />
     </>
   );

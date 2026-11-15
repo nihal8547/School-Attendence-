@@ -1,62 +1,172 @@
 'use client';
-import { useState } from 'react';
+
+import React, { useState } from 'react';
 
 type Stu = { id: number; roll: number; name: string; status: 'P' | 'A' };
 
-export default function AttendanceForm({ classId, date, session, students }: { classId: number; date: string; session: string; students: Stu[] }) {
-  const [marks, setMarks] = useState<Record<number, 'P' | 'A'>>(Object.fromEntries(students.map((s) => [s.id, s.status])));
+export default function AttendanceForm({
+  classId,
+  date,
+  session,
+  students,
+}: {
+  classId: number;
+  date: string;
+  session: string;
+  students: Stu[];
+}) {
+  const [marks, setMarks] = useState<Record<number, 'P' | 'A'>>(
+    Object.fromEntries(students.map((s) => [s.id, s.status]))
+  );
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const absent = students.filter((s) => marks[s.id] === 'A').length;
-  const set = (id: number, v: 'P' | 'A') => setMarks((m) => ({ ...m, [id]: v }));
+  const presentCount = students.filter((s) => marks[s.id] === 'P').length;
+  const absentCount = students.filter((s) => marks[s.id] === 'A').length;
+
+  const setStatus = (id: number, v: 'P' | 'A') => {
+    setMarks((m) => ({ ...m, [id]: v }));
+  };
+
+  const markAll = (v: 'P' | 'A') => {
+    setMarks(Object.fromEntries(students.map((s) => [s.id, v])));
+  };
 
   async function submit() {
-    if (!confirm(`Submit ${session} attendance?\n${students.length - absent} present, ${absent} absent.\nParents will get a WhatsApp message.`)) return;
+    if (
+      !confirm(
+        `Submit ${session.toUpperCase()} attendance?\n\n• ${presentCount} Present\n• ${absentCount} Absent\n\nParents of marked students will receive a WhatsApp message.`
+      )
+    ) {
+      return;
+    }
+
     setBusy(true);
     setResult(null);
+
     try {
       const res = await fetch('/api/attendance', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ class_id: classId, date, session, marks: students.map((s) => ({ student_id: s.id, status: marks[s.id] })) }),
+        body: JSON.stringify({
+          class_id: classId,
+          date,
+          session,
+          marks: students.map((s) => ({ student_id: s.id, status: marks[s.id] })),
+        }),
       });
       const j = await res.json();
-      if (!res.ok || !j.ok) setResult({ ok: false, text: j.error || 'Could not save' });
-      else setResult({ ok: true, text: j.notify_started ? 'Saved. Messages are being sent to parents; you will get a summary on WhatsApp.' : 'Saved, but the message sender could not be started. Admin can retry from the Message Log.' });
+      if (!res.ok || !j.ok) {
+        setResult({ ok: false, text: j.error || 'Failed to record attendance' });
+      } else {
+        setResult({
+          ok: true,
+          text: j.notify_started
+            ? 'Attendance saved! WhatsApp messages are being delivered to parents.'
+            : 'Attendance saved, but WhatsApp notifications could not be dispatched immediately.',
+        });
+      }
     } catch {
-      setResult({ ok: false, text: 'Network error. Try again.' });
+      setResult({ ok: false, text: 'Network connection error. Please try again.' });
     }
     setBusy(false);
   }
 
   return (
     <div className="card">
-      <div className="row" style={{ marginBottom: 12 }}>
-        <button type="button" className="ghost" onClick={() => setMarks(Object.fromEntries(students.map((s) => [s.id, 'P'])))}>All present</button>
-        <span className="muted" style={{ alignSelf: 'center' }}>{students.length - absent} present · {absent} absent</span>
+      {/* Attendance Stats & Quick Actions Bar */}
+      <div className="attendance-stats-bar">
+        <div className="stats-group">
+          <span className="stat-pill">
+            <span className="stat-dot p" />
+            <span>{presentCount} Present</span>
+          </span>
+          <span className="stat-pill">
+            <span className="stat-dot a" />
+            <span>{absentCount} Absent</span>
+          </span>
+          <span className="muted">Total: {students.length}</span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="ghost"
+            style={{ padding: '6px 12px', fontSize: 13 }}
+            onClick={() => markAll('P')}
+          >
+            All Present
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            style={{ padding: '6px 12px', fontSize: 13 }}
+            onClick={() => markAll('A')}
+          >
+            All Absent
+          </button>
+        </div>
       </div>
-      <table>
-        <thead><tr><th>Roll</th><th>Student</th><th>Present / Absent</th></tr></thead>
-        <tbody>
-          {students.map((s) => (
-            <tr key={s.id}>
-              <td>{s.roll}</td>
-              <td>{s.name}</td>
-              <td>
-                <div className="mark">
-                  <button type="button" aria-label={`${s.name} present`} className={`p ${marks[s.id] === 'P' ? 'on' : ''}`} onClick={() => set(s.id, 'P')}>✓</button>
-                  <button type="button" aria-label={`${s.name} absent`} className={`a ${marks[s.id] === 'A' ? 'on' : ''}`} onClick={() => set(s.id, 'A')}>✗</button>
+
+      {/* Student List Grid (Mobile Responsive Cards) */}
+      <div className="attendance-grid">
+        {students.map((s) => {
+          const isPresent = marks[s.id] === 'P';
+          const isAbsent = marks[s.id] === 'A';
+          return (
+            <div key={s.id} className="student-card">
+              <div className="student-info">
+                <div className="student-roll">#{s.roll}</div>
+                <div className="student-name" title={s.name}>
+                  {s.name}
                 </div>
-              </td>
-            </tr>
-          ))}
-          {!students.length && <tr><td colSpan={3} className="muted">No students in this class yet.</td></tr>}
-        </tbody>
-      </table>
-      {result && <div className={`msg ${result.ok ? '' : 'err'}`} style={{ marginTop: 12 }}>{result.text}</div>}
-      <div style={{ marginTop: 12 }}>
-        <button type="button" onClick={submit} disabled={busy || !students.length}>{busy ? 'Submitting…' : 'Submit attendance'}</button>
+              </div>
+
+              <div className="mark">
+                <button
+                  type="button"
+                  aria-label={`${s.name} present`}
+                  className={`p ${isPresent ? 'on' : ''}`}
+                  onClick={() => setStatus(s.id, 'P')}
+                >
+                  ✓
+                </button>
+                <button
+                  type="button"
+                  aria-label={`${s.name} absent`}
+                  className={`a ${isAbsent ? 'on' : ''}`}
+                  onClick={() => setStatus(s.id, 'A')}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
+        {!students.length && (
+          <div className="muted" style={{ padding: '24px 0', textAlign: 'center', gridColumn: '1 / -1' }}>
+            No active students found in this class.
+          </div>
+        )}
+      </div>
+
+      {result && (
+        <div className={`msg ${result.ok ? '' : 'err'}`} style={{ marginTop: 20 }}>
+          {result.text}
+        </div>
+      )}
+
+      {/* Submit Button */}
+      <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy || !students.length}
+          style={{ width: '100%', maxWidth: 280, height: 46 }}
+        >
+          {busy ? 'Saving Attendance…' : 'Submit & Send WhatsApp'}
+        </button>
       </div>
     </div>
   );

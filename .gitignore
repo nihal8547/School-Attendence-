@@ -1,7 +1,94 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Next.js build & cache
+.next/
+out/
+
+# Production build outputs
+build/
+dist/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Environment variables & secrets
 .env
-.env.local
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
 .webhook_secret
-node_modules
-.next
+.webhook_secret*
+*.pem
+*.key
+*.cert
+
+# Ensure sample environment template is always tracked
+!.env.example
+
+# Debug & npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data & logs
+*.log
+logs/
+pids/
+*.pid
+*.seed
+*.pid.lock
+tmp/
+temp/
+
+# Testing & Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Vercel deployment cache
+.vercel
+
+# Operating System files
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+# Windows
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+# Linux
+*~
+
+# IDEs and Code Editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+
+# Archives & Temporary files
 *.zip
-tsconfig.tsbuildinfo
+*.tar.gz
+*.tgz
+*.rar
+*.7z

@@ -2,7 +2,11 @@ import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
 import { addStudent, importStudents, removeStudent } from '../actions';
 
-export default async function StudentsPage({ searchParams }: { searchParams: Promise<{ class?: string; ok?: string; err?: string }> }) {
+export default async function StudentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ class?: string; ok?: string; err?: string }>;
+}) {
   await requireRole('admin');
   const sp = await searchParams;
   const classes = await q(`SELECT id, name FROM att.classes ORDER BY name`);
@@ -16,63 +20,137 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         [classId]
       )
     : [];
+
   return (
     <>
-      <h1>Students</h1>
-      {sp.ok && <div className="msg">{sp.ok}</div>}
-      {sp.err && <div className="msg err">{sp.err}</div>}
-      {!classes.length && <div className="msg err">Create a class first (Teachers &amp; Classes).</div>}
+      <div style={{ marginBottom: 24 }}>
+        <h1>Student Roster</h1>
+        <p className="muted" style={{ margin: 0 }}>
+          Manage enrolled students and guardian contact details for automated WhatsApp attendance alerts.
+        </p>
+      </div>
 
-      <form className="card row" method="get">
-        <label>Class
-          <select name="class" defaultValue={classId}>
-            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </label>
-        <button className="ghost" type="submit">Show</button>
-      </form>
+      {sp.ok && <div className="msg">✓ {sp.ok}</div>}
+      {sp.err && <div className="msg err">✕ {sp.err}</div>}
+      {!classes.length && (
+        <div className="msg err">
+          Please create at least one class first under Teachers &amp; Classes.
+        </div>
+      )}
 
+      {/* Class Selector Card */}
       <div className="card">
-        <h2>Add one student</h2>
+        <form className="row" method="get">
+          <label>
+            Select Class
+            <select name="class" defaultValue={classId}>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="ghost" type="submit" style={{ minWidth: 90 }}>
+            View Students
+          </button>
+        </form>
+      </div>
+
+      {/* Add Single Student */}
+      <div className="card">
+        <h2>Add Single Student</h2>
         <form action={addStudent} className="row">
           <input type="hidden" name="class_id" value={classId} />
-          <label>Roll no<input name="roll_no" type="number" min={0} style={{ width: 80 }} /></label>
-          <label>Student name<input name="name" required /></label>
-          <label>Parent name<input name="guardian_name" /></label>
-          <label>Parent WhatsApp<input name="phone" placeholder="98xxxxxxxx" required /></label>
-          <button type="submit">Add</button>
+          <label style={{ maxWidth: 100 }}>
+            Roll No
+            <input name="roll_no" type="number" min={1} placeholder="1" required />
+          </label>
+          <label>
+            Student Full Name
+            <input name="name" placeholder="Ahmed Ali" required />
+          </label>
+          <label>
+            Parent / Guardian Name
+            <input name="guardian_name" placeholder="Mr. Ali" />
+          </label>
+          <label>
+            Parent WhatsApp Phone
+            <input name="phone" placeholder="98xxxxxxxx" required />
+          </label>
+          <button type="submit">Add Student</button>
         </form>
       </div>
 
+      {/* Bulk CSV Import */}
       <div className="card">
-        <h2>Bulk import</h2>
-        <p className="muted">One student per line: <code>roll_no,student_name,parent_name,whatsapp_number</code></p>
+        <h2>Bulk Import via CSV</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Enter one student per line in the format: <code>roll_no,student_name,parent_name,whatsapp_number</code>
+        </p>
         <form action={importStudents} className="stack">
           <input type="hidden" name="class_id" value={classId} />
-          <textarea name="csv" placeholder={'1,Ahmed Ali,Mr. Ali,9876543210\n2,Fatima K,Mrs. Khan,9123456780'} />
-          <button type="submit">Import</button>
+          <textarea
+            name="csv"
+            placeholder={'1,Ahmed Ali,Mr. Ali,9876543210\n2,Fatima Khan,Mrs. Khan,9123456780\n3,Zaid Hassan,Mr. Hassan,9988776655'}
+          />
+          <button type="submit" style={{ alignSelf: 'flex-start' }}>
+            Import Students
+          </button>
         </form>
       </div>
 
+      {/* Students Table */}
       <div className="card">
-        <h2>Class list ({students.length})</h2>
-        <table>
-          <thead><tr><th>Roll</th><th>Student</th><th>Parent WhatsApp</th><th /></tr></thead>
-          <tbody>
-            {students.map((s) => (
-              <tr key={s.id}>
-                <td>{s.roll_no}</td><td>{s.name}</td><td>{s.guardians}</td>
-                <td>
-                  <form action={removeStudent}>
-                    <input type="hidden" name="student_id" value={s.id} />
-                    <input type="hidden" name="class_id" value={classId} />
-                    <button className="ghost" type="submit">Remove</button>
-                  </form>
-                </td>
+        <h2>
+          <span>Class Roster</span>
+          <span className="muted" style={{ fontSize: 13, fontWeight: 500 }}>
+            {students.length} students enrolled
+          </span>
+        </h2>
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 80 }}>Roll</th>
+                <th>Student Name</th>
+                <th>Guardian &amp; WhatsApp</th>
+                <th style={{ width: 100, textAlign: 'right' }}>Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {students.map((s) => (
+                <tr key={s.id}>
+                  <td>
+                    <span className="student-roll">#{s.roll_no}</span>
+                  </td>
+                  <td style={{ fontWeight: 600 }}>{s.name}</td>
+                  <td>{s.guardians || <span className="muted">— None —</span>}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <form action={removeStudent} style={{ display: 'inline-block' }}>
+                      <input type="hidden" name="student_id" value={s.id} />
+                      <input type="hidden" name="class_id" value={classId} />
+                      <button
+                        className="ghost"
+                        type="submit"
+                        style={{ padding: '5px 10px', fontSize: 12, color: 'var(--red)' }}
+                      >
+                        Remove
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+              {!students.length && (
+                <tr>
+                  <td colSpan={4} className="muted" style={{ textAlign: 'center', padding: '24px 0' }}>
+                    No students found in this class yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );

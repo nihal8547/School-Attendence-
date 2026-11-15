@@ -1,8 +1,13 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+
+import React, { useEffect, useRef, useState } from 'react';
 
 async function call(action: 'connect' | 'status' | 'logout') {
-  const res = await fetch('/api/wa', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action }) });
+  const res = await fetch('/api/wa', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action }),
+  });
   return res.json();
 }
 
@@ -17,6 +22,7 @@ export default function ConnectPanel({ initial }: { initial: 'connected' | 'disc
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
   };
+
   useEffect(() => stop, []);
 
   async function connect() {
@@ -24,9 +30,9 @@ export default function ConnectPanel({ initial }: { initial: 'connected' | 'disc
     setError('');
     const j = await call('connect');
     setBusy(false);
-    if (!j.ok) return setError(j.error || 'Could not get a QR code');
+    if (!j.ok) return setError(j.error || 'Could not generate a QR code');
     const b64 = j.base64 as string | null;
-    if (!b64) return setError('No QR returned. If this number is already linked, press Refresh status.');
+    if (!b64) return setError('No QR code returned. If this number is already linked, click "Refresh Status".');
     setQr(b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`);
     stop();
     let tries = 0;
@@ -40,7 +46,7 @@ export default function ConnectPanel({ initial }: { initial: 'connected' | 'disc
       } else if (tries > 40) {
         stop();
         setQr(null);
-        setError('QR expired. Press Connect again.');
+        setError('QR code expired. Click Connect WhatsApp again to refresh.');
       }
     }, 3000);
   }
@@ -53,7 +59,7 @@ export default function ConnectPanel({ initial }: { initial: 'connected' | 'disc
   }
 
   async function disconnect() {
-    if (!confirm('Disconnect WhatsApp? Parent messages will stop until you reconnect.')) return;
+    if (!confirm('Disconnect WhatsApp? Parent alert notifications will stop until you reconnect.')) return;
     setBusy(true);
     await call('logout');
     setBusy(false);
@@ -61,16 +67,42 @@ export default function ConnectPanel({ initial }: { initial: 'connected' | 'disc
   }
 
   return (
-    <div className="card stack">
-      <div>
-        Status: <span className={`badge ${status === 'connected' ? 'ok' : 'bad'}`}>{status}</span>
+    <div className="card">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Device Connection</h2>
+        <span className={`badge ${status === 'connected' ? 'ok' : 'bad'}`}>
+          {status === 'connected' ? '● Connected' : '○ Disconnected'}
+        </span>
       </div>
+
+      <p className="muted" style={{ marginTop: 0, marginBottom: 18 }}>
+        To link your WhatsApp: Open WhatsApp on your phone → tap <strong>Menu / Settings</strong> → tap{' '}
+        <strong>Linked Devices</strong> → tap <strong>Link a Device</strong> and scan the QR code below.
+      </p>
+
       {error && <div className="msg err">{error}</div>}
-      {qr && <img className="qr" src={qr} alt="WhatsApp QR code" />}
-      <div className="row">
-        {status !== 'connected' && <button onClick={connect} disabled={busy}>{busy ? 'Please wait…' : 'Connect WhatsApp'}</button>}
-        <button className="ghost" onClick={refresh} disabled={busy}>Refresh status</button>
-        {status === 'connected' && <button className="danger" onClick={disconnect} disabled={busy}>Disconnect</button>}
+
+      {qr && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
+          <img className="qr" src={qr} alt="WhatsApp QR Code" />
+          <span className="muted">Waiting for you to scan the QR code…</span>
+        </div>
+      )}
+
+      <div className="row" style={{ marginTop: 16 }}>
+        {status !== 'connected' && (
+          <button type="button" onClick={connect} disabled={busy}>
+            {busy ? 'Generating QR…' : 'Connect WhatsApp'}
+          </button>
+        )}
+        <button type="button" className="ghost" onClick={refresh} disabled={busy}>
+          {busy ? 'Checking…' : 'Refresh Status'}
+        </button>
+        {status === 'connected' && (
+          <button type="button" className="danger" onClick={disconnect} disabled={busy}>
+            Disconnect Device
+          </button>
+        )}
       </div>
     </div>
   );
