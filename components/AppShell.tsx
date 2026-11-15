@@ -232,3 +232,4 @@ export default function AppShell({ user, children }: AppShellProps) {
     </div>
   );
 }
+

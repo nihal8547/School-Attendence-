@@ -1,3 +1,4 @@
+import type { Viewport } from 'next';
 import './globals.css';
 import { getSession } from '@/lib/session';
 import AppShell from '@/components/AppShell';
@@ -5,7 +6,13 @@ import AppShell from '@/components/AppShell';
 export const metadata = {
   title: 'School Attendance | WhatsApp Alerts',
   description: 'Daily student attendance with automated WhatsApp alerts to parents',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
