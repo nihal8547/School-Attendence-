@@ -1,14 +1,43 @@
 services:
-  # 1) Creates the `att` schema and (optionally) the first admin. Safe to re-run.
+  # Dedicated database for this app (separate from n8n's own database).
+  schooldb:
+    image: postgres:16-alpine
+    container_name: schooldb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${SCHOOLDB_USER:-schooladmin}
+      POSTGRES_PASSWORD: ${SCHOOLDB_PASSWORD:?Set SCHOOLDB_PASSWORD in .env (letters and numbers only)}
+      POSTGRES_DB: ${SCHOOLDB_NAME:-schooldb}
+    volumes:
+      - schooldb_data:/var/lib/postgresql/data
+    ports:
+      # n8n connects here. Restrict port 5433 in your firewall to the n8n server only.
+      - "${SCHOOLDB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Creates the `att` schema (db/schema.sql) and the first admin. Safe to re-run.
   db-setup:
     build: { context: ., target: tools }
     env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://${SCHOOLDB_USER:-schooladmin}:${SCHOOLDB_PASSWORD}@schooldb:5432/${SCHOOLDB_NAME:-schooldb}}
+      DATABASE_SSL: "false"
+    depends_on:
+      schooldb:
+        condition: service_healthy
     restart: "no"
 
-  # 2) The dashboard
+  # The dashboard
   app:
     build: { context: ., target: runner }
     env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://${SCHOOLDB_USER:-schooladmin}:${SCHOOLDB_PASSWORD}@schooldb:5432/${SCHOOLDB_NAME:-schooldb}}
+      DATABASE_SSL: "false"
     ports:
       - "3000:3000"
     restart: unless-stopped
@@ -16,17 +45,5 @@ services:
       db-setup:
         condition: service_completed_successfully
 
-  # Optional local Postgres for development only: docker compose --profile localdb up
-  # (n8n must read/write the SAME database, so in production point DATABASE_URL at the Postgres n8n uses.)
-  localdb:
-    profiles: ["localdb"]
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: attendance
-      POSTGRES_PASSWORD: attendance
-      POSTGRES_DB: attendance
-    ports: ["5432:5432"]
-    volumes: ["pgdata:/var/lib/postgresql/data"]
-
 volumes:
-  pgdata:
+  schooldb_data:
