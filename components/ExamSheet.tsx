@@ -128,7 +128,7 @@ export default async function ExamSheet({
           <PrintButton label="Print mark sheet" />
         </div>
         <div className="table-wrapper" style={{ marginTop: 14 }}>
-          <table>
+          <table className="no-stack">
             <thead>
               <tr>
                 <th>Rank</th><th>Roll</th><th>Student</th>

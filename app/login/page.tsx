@@ -1,5 +1,6 @@
 import { login } from './actions';
 import LoginForm from './LoginForm';
+import InstallApp from '@/components/InstallApp';
 
 export const metadata = { title: 'Sign in | School Attendance' };
 
@@ -58,6 +59,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className="auth-sub">Sign in to continue to your dashboard.</p>
 
           <LoginForm action={login} error={!!error} />
+
+          <InstallApp className="auth-install" />
 
           <p className="auth-foot">Don&apos;t have an account? Ask your school admin to add you.</p>
         </div>

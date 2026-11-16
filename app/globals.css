@@ -989,3 +989,89 @@ html, body, button, input, select, textarea, table, th, td, code, pre, kbd, summ
   .card { box-shadow: none !important; border: 0 !important; }
   .tt-grid input { border: 0; background: transparent; padding: 2px; }
 }
+
+/* ==========================================================================
+   Mobile-first polish, bottom navigation, PWA
+   ========================================================================== */
+html { -webkit-tap-highlight-color: transparent; }
+body { overscroll-behavior-y: none; }
+
+.install-app { margin-bottom: 10px; }
+.install-btn { width: 100%; justify-content: center; }
+.install-help { margin-top: 8px; font-size: 13px; color: var(--muted); background: var(--primary-light); border-radius: var(--radius-md); padding: 10px 12px; }
+.auth-install { margin-top: 18px; }
+
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; }
+.filters label { min-width: 0; }
+
+.bottom-nav { display: none; }
+
+@media (max-width: 860px) {
+  .mobile-header { padding-top: env(safe-area-inset-top); height: calc(60px + env(safe-area-inset-top)); }
+  .content-area { padding-top: calc(60px + env(safe-area-inset-top)); padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .sidebar { padding-top: env(safe-area-inset-top); }
+
+  .bottom-nav {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+    background: rgba(255, 255, 255, .97); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  .bottom-link {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    padding: 6px 2px; border-radius: 12px; text-decoration: none; color: var(--muted);
+    font-size: 11px; font-weight: 600; min-height: 50px;
+  }
+  .bottom-link .bottom-icon { display: inline-flex; }
+  .bottom-link .bottom-icon svg { width: 22px; height: 22px; }
+  .bottom-link.active { color: var(--primary); background: var(--primary-light); }
+  .bottom-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+@media (max-width: 640px) {
+  h1 { font-size: 21px; margin-bottom: 14px; }
+  .card { padding: 14px; margin-bottom: 14px; border-radius: var(--radius-md); }
+  .card:hover { box-shadow: var(--shadow-sm); }
+
+  /* 16px inputs stop iOS zooming in; taller controls are easier to tap */
+  input, select, textarea { font-size: 16px; min-height: 46px; }
+  button, .btn { min-height: 46px; font-size: 15px; }
+  .row { gap: 10px; }
+  label { min-width: 0; }
+  .filters { grid-template-columns: 1fr 1fr; }
+  .filters label:first-child { grid-column: 1 / -1; }
+  .filters .load-btn { display: none; }
+
+  /* tables become stacked cards (labels are added by MobileTables) */
+  .table-wrapper:has(table[data-stack]) { border: 0; overflow: visible; margin: 0; }
+  table[data-stack] { white-space: normal; display: block; }
+  table[data-stack] thead { display: none; }
+  table[data-stack] tbody { display: grid; gap: 10px; }
+  table[data-stack] tr { display: block; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 6px 12px; background: #fff; }
+  table[data-stack] tbody tr:hover { background: #fff; }
+  table[data-stack] td { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line-light); text-align: right; width: auto !important; }
+  table[data-stack] td:last-child { border-bottom: 0; }
+  table[data-stack] td::before { content: attr(data-label); flex: none; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; text-align: left; }
+  table[data-stack] td[data-label='']::before { display: none; }
+  table[data-stack] td form { margin-left: auto; }
+
+  /* wide grids scroll sideways with the first columns pinned */
+  .tt-grid th:first-child, .tt-grid td:first-child { position: sticky; left: 0; background: #fff; z-index: 1; box-shadow: 1px 0 0 var(--line); }
+  .tt-grid thead th:first-child { background: var(--line-light); }
+  .tt-grid input { min-width: 100px; }
+  .marks-table th:nth-child(1), .marks-table td:nth-child(1) { position: sticky; left: 0; background: #fff; z-index: 1; min-width: 44px; }
+  .marks-table th:nth-child(2), .marks-table td:nth-child(2) { position: sticky; left: 44px; background: #fff; z-index: 1; min-width: 110px; box-shadow: 1px 0 0 var(--line); }
+  .marks-table thead th:nth-child(-n+2) { background: var(--line-light); }
+  .marks-table input { width: 72px; }
+
+  /* attendance */
+  .attendance-stats-bar { flex-direction: column; align-items: stretch; gap: 12px; }
+  .attendance-stats-bar > div:last-child > button { flex: 1; }
+  .mark button { min-width: 48px; min-height: 48px; }
+}
+
+@media (display-mode: standalone) {
+  body { user-select: none; -webkit-user-select: none; }
+  input, textarea { user-select: text; -webkit-user-select: text; }
+}

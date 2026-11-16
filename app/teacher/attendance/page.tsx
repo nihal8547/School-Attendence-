@@ -68,7 +68,7 @@ export default async function TeacherHome({
       )}
 
       <div className="card">
-        <AutoSubmitForm className="row">
+        <AutoSubmitForm className="row filters">
           <label>
             Class
             <select name="class" defaultValue={classId}>
@@ -93,7 +93,7 @@ export default async function TeacherHome({
             </select>
           </label>
 
-          <button className="ghost" type="submit" style={{ minWidth: 90 }}>
+          <button className="ghost load-btn" type="submit" style={{ minWidth: 90 }}>
             Load
           </button>
         </AutoSubmitForm>
