@@ -1,0 +1,39 @@
+# Run the dashboard ON THE SAME SERVER as n8n, using the SchoolDB container that
+# n8n already talks to. Use this instead of docker-compose.yml on the VPS:
+#
+#   docker compose -f docker-compose.server.yml up -d --build
+#
+# The app joins n8n's Docker network (default name: n8n_default) so the hostname
+# `schooldb` resolves to the very same database n8n reads. Dashboard and n8n
+# then always see the same attendance rows.
+#
+# Change the network name below if yours differs:
+#   docker inspect n8n -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}'
+services:
+  app:
+    build: { context: ., target: runner }
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://${SCHOOLDB_USER:-schooladmin}:${SCHOOLDB_PASSWORD}@schooldb:5432/${SCHOOLDB_NAME:-schooldb}}
+      DATABASE_SSL: "false"
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    restart: unless-stopped
+    networks: [n8n_net]
+
+  # Optional: create/refresh the `att` schema and the first admin (safe to re-run):
+  #   docker compose -f docker-compose.server.yml run --rm db-setup
+  db-setup:
+    profiles: ["setup"]
+    build: { context: ., target: tools }
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://${SCHOOLDB_USER:-schooladmin}:${SCHOOLDB_PASSWORD}@schooldb:5432/${SCHOOLDB_NAME:-schooldb}}
+      DATABASE_SSL: "false"
+    restart: "no"
+    networks: [n8n_net]
+
+networks:
+  n8n_net:
+    external: true
+    name: ${N8N_NETWORK:-n8n_default}
