@@ -70,3 +70,37 @@ CREATE TABLE IF NOT EXISTS att.message_log (
   UNIQUE (attendance_id, guardian_id)
 );
 CREATE INDEX IF NOT EXISTS message_log_status_idx ON att.message_log(status);
+
+-- Timetable and mark sheets
+CREATE TABLE IF NOT EXISTS att.timetable (
+  id          SERIAL PRIMARY KEY,
+  class_id    INT NOT NULL REFERENCES att.classes(id) ON DELETE CASCADE,
+  day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 1 AND 6),
+  period      SMALLINT NOT NULL CHECK (period BETWEEN 1 AND 10),
+  subject     TEXT NOT NULL,
+  UNIQUE (class_id, day_of_week, period)
+);
+
+CREATE TABLE IF NOT EXISTS att.exams (
+  id         SERIAL PRIMARY KEY,
+  class_id   INT NOT NULL REFERENCES att.classes(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  exam_date  DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS att.exam_subjects (
+  exam_id   INT NOT NULL REFERENCES att.exams(id) ON DELETE CASCADE,
+  subject   TEXT NOT NULL,
+  max_marks INT NOT NULL DEFAULT 100 CHECK (max_marks > 0),
+  position  INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (exam_id, subject)
+);
+
+CREATE TABLE IF NOT EXISTS att.marks (
+  exam_id    INT NOT NULL REFERENCES att.exams(id) ON DELETE CASCADE,
+  student_id INT NOT NULL REFERENCES att.students(id) ON DELETE CASCADE,
+  subject    TEXT NOT NULL,
+  marks      NUMERIC(6,2) NOT NULL CHECK (marks >= 0),
+  PRIMARY KEY (exam_id, student_id, subject)
+);

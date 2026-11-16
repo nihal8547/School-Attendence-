@@ -976,3 +976,16 @@ html, body, button, input, select, textarea, table, th, td, code, pre, kbd, summ
 
 .status-label.u { color: var(--muted); background: #f1f5f9; }
 .student-card.is-unmarked { border-color: var(--line); background: #fff; }
+
+/* ===== Timetable & mark sheets ===== */
+.tt-grid td, .tt-grid th, .marks-table td, .marks-table th { padding: 6px 8px; }
+.tt-grid input { min-width: 92px; padding: 8px 10px; text-align: center; }
+.marks-table input { width: 80px; padding: 8px 10px; text-align: center; }
+.print-title { display: none; font-weight: 700; font-size: 18px; margin-bottom: 12px; }
+@media print {
+  .no-print, .sidebar, .mobile-header { display: none !important; }
+  .print-title { display: block; }
+  .content-area, .main-container { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+  .card { box-shadow: none !important; border: 0 !important; }
+  .tt-grid input { border: 0; background: transparent; padding: 2px; }
+}
