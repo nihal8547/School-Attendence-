@@ -1,9 +1,10 @@
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
 import { ensureAcademicTables, DAYS, PERIODS } from '@/lib/academic';
-import { saveTimetable } from '@/lib/academic-actions';
+import { saveTimetable, sendTimetable } from '@/lib/academic-actions';
 import ClassPicker from './ClassPicker';
 import PrintButton from './PrintButton';
+import ConfirmButton from './ConfirmButton';
 
 export default async function TimetableView({
   role,
@@ -82,6 +83,18 @@ export default async function TimetableView({
         <div className="no-print" style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <PrintButton label="Print timetable" />
           <button type="submit" style={{ minWidth: 160 }}>Save Timetable</button>
+        </div>
+      </form>
+
+      <form action={sendTimetable} className="card no-print">
+        <input type="hidden" name="class_id" value={classId} />
+        <input type="hidden" name="base" value={base} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <strong>Send to parents on WhatsApp</strong>
+            <div className="muted">Sends the saved timetable to every parent of Class {className} from the class teacher&apos;s WhatsApp. Save your changes first.</div>
+          </div>
+          <ConfirmButton message={`Send the Class ${className} timetable to all parents on WhatsApp?`}>Send Timetable</ConfirmButton>
         </div>
       </form>
     </>

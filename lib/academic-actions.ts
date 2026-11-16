@@ -3,7 +3,9 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { q } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { ensureAcademicTables, DAYS, PERIODS } from '@/lib/academic';
+import { ensureAcademicTables, DAYS, PERIODS, grade } from '@/lib/academic';
+import { callN8n } from '@/lib/n8n';
+import { getLiveWaStatus } from '@/lib/wa';
 
 function baseOf(formData: FormData) {
   return formData.get('base') === '/admin' ? '/admin' : '/teacher';
@@ -157,4 +159,99 @@ export async function deleteExam(formData: FormData) {
   await q(`DELETE FROM att.exams WHERE id = $1`, [examId]);
   revalidatePath(`${base}/marks`);
   back(`${base}/marks?class=${exam.class_id}`, 'Exam deleted');
+}
+
+type Notice = { studentId: number | null; phone: string; text: string };
+
+// Stores the messages in att.notice_log, then asks n8n to send that batch from the class teacher's WhatsApp.
+async function queueAndSend(kind: 'timetable' | 'marksheet', classId: number, examId: number | null, items: Notice[], path: string, teacherId: number | null) {
+  if (!teacherId) back(path, 'This class has no class teacher assigned', true);
+  if ((await getLiveWaStatus(teacherId)) !== 'connected') {
+    back(path, "The class teacher's WhatsApp is not connected. Connect it under My WhatsApp first.", true);
+  }
+  if (!items.length) back(path, 'No parents with a WhatsApp number to send to', true);
+  const batch = crypto.randomUUID();
+  await q(
+    `INSERT INTO att.notice_log (batch, kind, class_id, exam_id, student_id, phone, text)
+     SELECT $1, $2, $3, $4, x.sid, x.ph, x.tx FROM unnest($5::int[], $6::text[], $7::text[]) AS x(sid, ph, tx)`,
+    [batch, kind, classId, examId, items.map((i) => i.studentId), items.map((i) => i.phone), items.map((i) => i.text)]
+  );
+  const r = await callN8n('send-notices', { batch });
+  if (!r.ok) back(path, 'Saved, but the WhatsApp sender (n8n) could not be started. Please try again.', true);
+  back(path, `Sending to ${items.length} parent${items.length === 1 ? '' : 's'} on WhatsApp. They are sent one by one, so it can take a few minutes.`);
+}
+
+export async function sendTimetable(formData: FormData) {
+  await ensureAcademicTables();
+  const base = baseOf(formData);
+  const classId = Number(formData.get('class_id'));
+  await allowClass(classId);
+  const path = `${base}/timetable?class=${classId}`;
+
+  const [cls] = await q<{ name: string; teacher_id: number | null }>(`SELECT name, teacher_id FROM att.classes WHERE id = $1`, [classId]);
+  const rows = await q<{ day_of_week: number; period: number; subject: string }>(
+    `SELECT day_of_week, period, subject FROM att.timetable WHERE class_id = $1 ORDER BY day_of_week, period`,
+    [classId]
+  );
+  if (!rows.length) back(path, 'Fill in and save the timetable first', true);
+
+  const lines = DAYS.map((d, i) => {
+    const day = rows.filter((r) => r.day_of_week === i + 1);
+    return day.length ? `*${d}*\n` + day.map((r) => `${r.period}. ${r.subject}`).join('\n') : '';
+  }).filter(Boolean);
+  const text = `📅 *Class ${cls.name} – Weekly Timetable*\n\n${lines.join('\n\n')}\n\n– Class Teacher, ${cls.name}`;
+
+  const phones = await q<{ phone: string }>(
+    `SELECT DISTINCT g.phone FROM att.guardians g JOIN att.students s ON s.id = g.student_id
+     WHERE s.class_id = $1 AND s.active AND g.opt_in`,
+    [classId]
+  );
+  await queueAndSend('timetable', classId, null, phones.map((p) => ({ studentId: null, phone: p.phone, text })), path, cls.teacher_id);
+}
+
+export async function sendMarksheet(formData: FormData) {
+  await ensureAcademicTables();
+  const base = baseOf(formData);
+  const examId = Number(formData.get('exam_id'));
+  const [exam] = await q<{ id: number; name: string; class_id: number; class_name: string; teacher_id: number | null }>(
+    `SELECT e.id, e.name, e.class_id, c.name AS class_name, c.teacher_id FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1`,
+    [examId]
+  );
+  if (!exam) back(`${base}/marks`, 'Exam not found', true);
+  await allowClass(exam.class_id);
+  const path = `${base}/marks/${examId}`;
+
+  const subjects = await q<{ subject: string; max_marks: number }>(`SELECT subject, max_marks FROM att.exam_subjects WHERE exam_id = $1 ORDER BY position`, [examId]);
+  const students = await q<{ id: number; name: string }>(`SELECT id, name FROM att.students WHERE class_id = $1 AND active ORDER BY roll_no, name`, [exam.class_id]);
+  const markRows = await q<{ student_id: number; subject: string; marks: string }>(`SELECT student_id, subject, marks FROM att.marks WHERE exam_id = $1`, [examId]);
+  const marks = new Map(markRows.map((m) => [`${m.student_id}_${m.subject}`, Number(m.marks)]));
+  const maxTotal = subjects.reduce((x, s) => x + s.max_marks, 0);
+
+  const done = students
+    .map((st) => {
+      const got = subjects.map((s) => marks.get(`${st.id}_${s.subject}`));
+      return { st, got, complete: got.every((g) => g !== undefined), total: got.reduce<number>((x, g) => x + (g ?? 0), 0) };
+    })
+    .filter((r) => r.complete);
+  if (!done.length) back(path, 'Enter and save the marks first (a student needs all subjects filled)', true);
+
+  const sorted = [...done].sort((a, b) => b.total - a.total);
+  const rank = new Map<number, number>();
+  sorted.forEach((r, i) => rank.set(r.st.id, i > 0 && r.total === sorted[i - 1].total ? rank.get(sorted[i - 1].st.id)! : i + 1));
+
+  const guardians = await q<{ student_id: number; phone: string }>(
+    `SELECT DISTINCT g.student_id, g.phone FROM att.guardians g JOIN att.students s ON s.id = g.student_id
+     WHERE s.class_id = $1 AND s.active AND g.opt_in`,
+    [exam.class_id]
+  );
+  const items: Notice[] = [];
+  for (const r of done) {
+    const pct = maxTotal ? (r.total / maxTotal) * 100 : 0;
+    const text =
+      `📝 *${exam.name} – Mark Sheet*\n\n*${r.st.name}* (Class ${exam.class_name})\n\n` +
+      subjects.map((s, i) => `${s.subject}: ${r.got[i]}/${s.max_marks}`).join('\n') +
+      `\n\n*Total:* ${r.total}/${maxTotal}\n*Percentage:* ${pct.toFixed(1)}%\n*Grade:* ${grade(pct)}\n*Rank:* ${rank.get(r.st.id)} of ${done.length}\n\n– Class Teacher, ${exam.class_name}`;
+    for (const g of guardians.filter((x) => x.student_id === r.st.id)) items.push({ studentId: r.st.id, phone: g.phone, text });
+  }
+  await queueAndSend('marksheet', exam.class_id, examId, items, path, exam.teacher_id);
 }

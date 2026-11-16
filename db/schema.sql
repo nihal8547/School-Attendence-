@@ -104,3 +104,20 @@ CREATE TABLE IF NOT EXISTS att.marks (
   marks      NUMERIC(6,2) NOT NULL CHECK (marks >= 0),
   PRIMARY KEY (exam_id, student_id, subject)
 );
+
+CREATE TABLE IF NOT EXISTS att.notice_log (
+  id         BIGSERIAL PRIMARY KEY,
+  batch      TEXT NOT NULL,
+  kind       TEXT NOT NULL CHECK (kind IN ('timetable','marksheet')),
+  class_id   INT NOT NULL REFERENCES att.classes(id) ON DELETE CASCADE,
+  exam_id    INT REFERENCES att.exams(id) ON DELETE CASCADE,
+  student_id INT REFERENCES att.students(id) ON DELETE SET NULL,
+  phone      TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','sent','failed')),
+  error      TEXT,
+  attempts   INT NOT NULL DEFAULT 0,
+  sent_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS notice_log_batch_idx ON att.notice_log(batch);

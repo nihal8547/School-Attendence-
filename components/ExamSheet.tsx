@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation';
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
 import { ensureAcademicTables } from '@/lib/academic';
-import { saveMarks, deleteExam } from '@/lib/academic-actions';
+import { saveMarks, deleteExam, sendMarksheet } from '@/lib/academic-actions';
 import PrintButton from './PrintButton';
+import ConfirmButton from './ConfirmButton';
 
 function grade(pct: number) {
   if (pct >= 90) return 'A+';
@@ -156,6 +157,18 @@ export default async function ExamSheet({
         </div>
         <p className="muted" style={{ marginBottom: 0 }}>Rank, total and grade appear once all subjects are entered for a student. Marks below 35% are shown in red.</p>
       </div>
+
+      <form action={sendMarksheet} className="card no-print">
+        <input type="hidden" name="exam_id" value={examId} />
+        <input type="hidden" name="base" value={base} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <strong>Send marks to parents on WhatsApp</strong>
+            <div className="muted">Each parent receives their own child&apos;s subject marks, total, percentage, grade and rank. Only students with all subjects entered are sent. Save marks first.</div>
+          </div>
+          <ConfirmButton message={`Send ${exam.name} marks to parents on WhatsApp?`}>Send Marks</ConfirmButton>
+        </div>
+      </form>
 
       <form action={deleteExam} className="no-print" style={{ marginTop: 8 }}>
         <input type="hidden" name="exam_id" value={examId} />
