@@ -1,6 +1,9 @@
+const isDev = process.env.NODE_ENV !== 'production';
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // 'unsafe-eval' is required by React in development mode only (never used in production)
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",

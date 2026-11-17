@@ -184,14 +184,6 @@ export default function AppShell({ user, modules, schoolName, children }: AppShe
           </button>
         </div>
 
-        {/* User Card in Sidebar */}
-        <Link href={accountHref} className="sidebar-user-card" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="user-avatar">{userInitial}</div>
-          <div className="user-details">
-            <div className="user-name">{user.name}</div>
-          </div>
-        </Link>
-
         {/* Navigation Links */}
         <nav className="sidebar-nav">
           <div className="nav-section-label">Navigation</div>
