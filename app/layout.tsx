@@ -5,8 +5,7 @@ import { getSession } from '@/lib/session';
 import AppShell from '@/components/AppShell';
 import PwaRegister from '@/components/PwaRegister';
 import MobileTables from '@/components/MobileTables';
-import { navModules } from '@/lib/modules';
-import { getSchool } from '@/lib/settings';
+import { getData } from '@/lib/api';
 
 export const metadata: Metadata = {
   title: 'School Attendance | WhatsApp Alerts',
@@ -31,8 +30,9 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const s = await getSession();
   // Menu follows the modules switched on for this school (and the teacher's class groups).
-  const modules = s && s.role !== 'superadmin' ? await navModules(s).catch(() => undefined) : undefined;
-  const schoolName = s && s.role !== 'superadmin' ? (await getSchool(s.sid).catch(() => null))?.name : undefined;
+  const nav = s && s.role !== 'superadmin' ? await getData<{ modules: string[]; schoolName: string }>('nav').catch(() => null) : null;
+  const modules = nav?.modules;
+  const schoolName = nav?.schoolName;
 
   return (
     <html lang="en">

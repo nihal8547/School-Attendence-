@@ -1,10 +1,7 @@
 import Link from 'next/link';
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { requireModule, classesForModule } from '@/lib/modules';
-import { ensureAcademicTables } from '@/lib/academic';
 import { createExam } from '@/lib/academic-actions';
-import { todayIST } from '@/lib/n8n';
 import ClassPicker from './ClassPicker';
 
 export default async function MarksList({
@@ -14,11 +11,9 @@ export default async function MarksList({
   role: 'admin' | 'teacher';
   searchParams: { class?: string; ok?: string; err?: string };
 }) {
-  const s = await requireRole(role);
-  await ensureAcademicTables();
+  await requireRole(role);
   const base = role === 'admin' ? '/admin' : '/teacher';
-  await requireModule(s, 'marks', base);
-  const classes = await classesForModule(s, 'marks');
+  const { classes, classId, exams, today } = await getData<{ classes: { id: number; name: string }[]; classId: number; exams: any[]; today: string }>('marks-list', { class: searchParams.class });
 
   if (!classes.length) {
     return (
@@ -28,15 +23,6 @@ export default async function MarksList({
       </div>
     );
   }
-
-  const classId = classes.find((c) => String(c.id) === searchParams.class)?.id ?? classes[0].id;
-  const exams = await q(
-    `SELECT e.id, e.name, to_char(e.exam_date, 'DD Mon YYYY') AS date_label,
-            (SELECT COUNT(*) FROM att.exam_subjects x WHERE x.exam_id = e.id) AS subjects,
-            (SELECT COUNT(DISTINCT m.student_id) FROM att.marks m WHERE m.exam_id = e.id) AS students_marked
-     FROM att.exams e WHERE e.class_id = $1 ORDER BY e.exam_date DESC NULLS LAST, e.id DESC`,
-    [classId]
-  );
 
   return (
     <>
@@ -63,7 +49,7 @@ export default async function MarksList({
           </label>
           <label>
             Date
-            <input type="date" name="exam_date" defaultValue={todayIST()} />
+            <input type="date" name="exam_date" defaultValue={today} />
           </label>
           <label style={{ flex: 2 }}>
             Subjects (comma separated)

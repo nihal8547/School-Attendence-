@@ -1,8 +1,6 @@
 import Link from 'next/link';
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { getLiveWaStatus } from '@/lib/wa';
-import { todayIST } from '@/lib/n8n';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,58 +12,9 @@ function fmtPhone(p?: string | null) {
 
 export default async function TeacherDashboard() {
   const s = await requireRole('teacher');
-  const today = todayIST();
-  const waStatus = await getLiveWaStatus(s.uid);
-
-  const [me] = await q(
-    `SELECT name, email, phone, instance_name, to_char(created_at, 'DD Mon YYYY') AS joined FROM att.users WHERE id = $1`,
-    [s.uid]
-  );
-
-  const classes = await q(
-    `SELECT c.id, c.name,
-            (SELECT COUNT(*) FROM att.students st WHERE st.class_id = c.id AND st.active) AS students,
-            (SELECT COUNT(*) FROM att.guardians g JOIN att.students st ON st.id = g.student_id WHERE st.class_id = c.id AND st.active) AS parents
-     FROM att.classes c WHERE c.teacher_id = $1 ORDER BY c.name`,
-    [s.uid]
-  );
-
-  const classIds = classes.map((c) => c.id);
-  const todayRows = classIds.length
-    ? await q(
-        `SELECT st.class_id, a.session,
-                COUNT(*) FILTER (WHERE a.status = 'P') AS present,
-                COUNT(*) FILTER (WHERE a.status = 'A') AS absent
-         FROM att.attendance a JOIN att.students st ON st.id = a.student_id
-         WHERE st.class_id = ANY($1::int[]) AND a.att_date = $2::date
-         GROUP BY st.class_id, a.session`,
-        [classIds, today]
-      )
-    : [];
-
-  const [msgs] = classIds.length
-    ? await q(
-        `SELECT COUNT(*) FILTER (WHERE ml.status = 'sent') AS sent,
-                COUNT(*) FILTER (WHERE ml.status = 'failed') AS failed,
-                COUNT(*) FILTER (WHERE ml.status = 'queued') AS queued
-         FROM att.message_log ml
-         JOIN att.attendance a ON a.id = ml.attendance_id
-         JOIN att.students st ON st.id = a.student_id
-         WHERE st.class_id = ANY($1::int[]) AND a.att_date = $2::date`,
-        [classIds, today]
-      )
-    : [{ sent: 0, failed: 0, queued: 0 }];
-
-  const roster = classIds.length
-    ? await q(
-        `SELECT st.class_id, st.roll_no, st.name,
-                COALESCE(string_agg(COALESCE(g.name, 'Parent') || ' · ' || g.phone, ', '), '') AS parents
-         FROM att.students st LEFT JOIN att.guardians g ON g.student_id = st.id
-         WHERE st.class_id = ANY($1::int[]) AND st.active
-         GROUP BY st.id ORDER BY st.roll_no, st.name`,
-        [classIds]
-      )
-    : [];
+  const { today, waStatus, me, classes, todayRows, msgs, roster } = await getData<{
+    today: string; waStatus: string; me: any; classes: any[]; todayRows: any[]; msgs: any; roster: any[];
+  }>('teacher-home');
 
   const stat = (classId: number, session: string) => todayRows.find((r) => r.class_id === classId && r.session === session);
   const initial = (me?.name || s.name || 'T').charAt(0).toUpperCase();

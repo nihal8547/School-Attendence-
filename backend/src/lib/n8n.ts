@@ -1,11 +1,12 @@
+import { config } from '../config.js';
 export async function callN8n(path: string, body: object, timeoutMs = 8000) {
-  const base = process.env.N8N_BASE_URL || 'https://n8n.webbea.qa';
+  const base = config.n8nBase;
   try {
     const res = await fetch(`${base}/webhook/${path}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-secret': process.env.N8N_WEBHOOK_SECRET || '' },
+      headers: { 'content-type': 'application/json', 'x-api-secret': config.n8nSecret },
       body: JSON.stringify(body),
-      cache: 'no-store',
+      
       signal: AbortSignal.timeout(timeoutMs),
     });
     const text = await res.text();

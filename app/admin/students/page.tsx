@@ -1,26 +1,17 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { classesFor } from '@/lib/access';
 import { addStudent, importStudents, removeStudent } from '../actions';
 
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string; ok?: string; err?: string }>;
+  searchParams: Promise<{ class?: string; page?: string; ok?: string; err?: string }>;
 }) {
-  const s = await requireRole('admin');
+  await requireRole('admin');
   const sp = await searchParams;
-  const classes = await classesFor(s);
-  const classId = classes.some((c) => c.id === Number(sp.class)) ? Number(sp.class) : classes[0]?.id || 0;
-  const students = classId
-    ? await q(
-        `SELECT s.id, s.roll_no, s.name,
-                COALESCE(string_agg(g.name || ' (' || g.phone || ')', ', '), '') AS guardians
-         FROM att.students s LEFT JOIN att.guardians g ON g.student_id = s.id
-         WHERE s.class_id = $1 AND s.active GROUP BY s.id ORDER BY s.roll_no, s.name`,
-        [classId]
-      )
-    : [];
+  const { classes, classId, students, total, page, pages } = await getData<{
+    classes: { id: number; name: string }[]; classId: number; students: any[]; total: number; page: number; pages: number;
+  }>('students', { class: sp.class, page: sp.page });
 
   return (
     <>
@@ -106,7 +97,7 @@ export default async function StudentsPage({
         <h2>
           <span>Class Roster</span>
           <span className="muted" style={{ fontSize: 13, fontWeight: 500 }}>
-            {students.length} students enrolled
+            {total} students enrolled
           </span>
         </h2>
         <div className="table-wrapper">
@@ -152,6 +143,13 @@ export default async function StudentsPage({
             </tbody>
           </table>
         </div>
+        {pages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+            {page > 1 ? <a className="btn ghost" href={`/admin/students?class=${classId}&page=${page - 1}`}>← Previous</a> : <span />}
+            <span className="muted">Page {page} of {pages}</span>
+            {page < pages ? <a className="btn ghost" href={`/admin/students?class=${classId}&page=${page + 1}`}>Next →</a> : <span />}
+          </div>
+        )}
       </div>
     </>
   );

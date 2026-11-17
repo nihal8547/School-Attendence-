@@ -1,29 +1,22 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureSchema } from '@/lib/academic';
-import { GROUP_MODULES } from '@/lib/modules';
 import { createGroup, createDefaultGroups, saveGroup, deleteGroup, assignClassGroup } from '@/lib/group-actions';
 import ConfirmButton from '@/components/ConfirmButton';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
-  const s = await requireRole('admin');
-  await ensureSchema();
+  await requireRole('admin');
   const sp = await searchParams;
-  const off = new Set((await q<{ module_key: string }>(`SELECT module_key FROM att.school_modules WHERE school_id = $1 AND NOT enabled`, [s.sid])).map((r) => r.module_key));
-  const groups = await q<{ id: number; name: string; grading: string; show_rank: boolean; classes: string }>(
-    `SELECT g.id, g.name, g.grading, g.show_rank, (SELECT COUNT(*) FROM att.classes c WHERE c.group_id = g.id) AS classes
-     FROM att.class_groups g WHERE g.school_id = $1 ORDER BY g.id`,
-    [s.sid]
-  );
-  const gOff = await q<{ group_id: number; module_key: string }>(
-    `SELECT gm.group_id, gm.module_key FROM att.class_group_modules gm JOIN att.class_groups g ON g.id = gm.group_id WHERE g.school_id = $1 AND NOT gm.enabled`,
-    [s.sid]
-  );
-  const groupOff = new Set(gOff.map((r) => `${r.group_id}:${r.module_key}`));
-  const classes = await q<{ id: number; name: string; group_id: number | null }>(`SELECT id, name, group_id FROM att.classes WHERE school_id = $1 ORDER BY name`, [s.sid]);
-  const available = GROUP_MODULES.filter((m) => !off.has(m.key));
+  const d = await getData<{
+    off: string[]; groups: { id: number; name: string; grading: string; show_rank: boolean; classes: string }[]; groupOff: string[];
+    classes: { id: number; name: string; group_id: number | null }[]; groupModules: { key: string; label: string; desc: string }[];
+  }>('groups');
+  const off = new Set(d.off);
+  const groups = d.groups;
+  const groupOff = new Set(d.groupOff);
+  const classes = d.classes;
+  const available = d.groupModules.filter((m) => !off.has(m.key));
 
   return (
     <>
@@ -85,7 +78,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
                     </label>
                   ))}
                 </div>
-                {GROUP_MODULES.length !== available.length && <p className="hint" style={{ margin: '6px 0 0' }}>Modules not shown are not enabled for your school.</p>}
+                {d.groupModules.length !== available.length && <p className="hint" style={{ margin: '6px 0 0' }}>Modules not shown are not enabled for your school.</p>}
               </div>
               <button type="submit">Save group</button>
             </form>

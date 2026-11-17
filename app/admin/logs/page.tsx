@@ -1,4 +1,4 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { retryFailed } from '../actions';
 
@@ -7,30 +7,11 @@ export const dynamic = 'force-dynamic';
 export default async function LogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ok?: string; err?: string }>;
+  searchParams: Promise<{ ok?: string; err?: string; page?: string }>;
 }) {
-  const s = await requireRole('admin');
+  await requireRole('admin');
   const sp = await searchParams;
-  const [stats] = await q(
-    `SELECT COUNT(*) FILTER (WHERE ml2.status='sent') AS sent,
-            COUNT(*) FILTER (WHERE ml2.status='failed') AS failed,
-            COUNT(*) FILTER (WHERE ml2.status IN ('queued','sending')) AS queued
-     FROM att.message_log ml2 JOIN att.attendance a2 ON a2.id = ml2.attendance_id JOIN att.students s2 ON s2.id = a2.student_id JOIN att.classes c2 ON c2.id = s2.class_id
-     WHERE ml2.created_at > now() - interval '7 days' AND c2.school_id = $1`,
-    [s.sid]
-  );
-  const rows = await q(
-    `SELECT ml.id, ml.status, ml.error, ml.attempts, ml.sent_at, a.session, to_char(a.att_date,'DD Mon') AS d,
-            a.status AS att_status, s.name AS student, c.name AS class_name, g.phone
-     FROM att.message_log ml
-     JOIN att.attendance a ON a.id = ml.attendance_id
-     JOIN att.students s ON s.id = a.student_id
-     JOIN att.classes c ON c.id = s.class_id
-     JOIN att.guardians g ON g.id = ml.guardian_id
-     WHERE c.school_id = $1
-     ORDER BY ml.id DESC LIMIT 150`,
-    [s.sid]
-  );
+  const { stats, rows, page, hasMore } = await getData<{ stats: any; rows: any[]; page: number; hasMore: boolean }>('admin-logs', { page: sp.page });
 
   return (
     <>
@@ -86,7 +67,7 @@ export default async function LogsPage({
         <h2>
           <span>Recent Transmissions</span>
           <span className="muted" style={{ fontSize: 13, fontWeight: 500 }}>
-            Latest {rows.length} messages
+            Page {page}
           </span>
         </h2>
         <div className="table-wrapper">
@@ -143,6 +124,10 @@ export default async function LogsPage({
               )}
             </tbody>
           </table>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+          {page > 1 ? <a className="btn ghost" href={`/admin/logs?page=${page - 1}`}>← Newer</a> : <span />}
+          {hasMore ? <a className="btn ghost" href={`/admin/logs?page=${page + 1}`}>Older →</a> : <span />}
         </div>
       </div>
     </>

@@ -1,15 +1,13 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { addChapters, setTopicStatus, deleteTopic } from '@/lib/academic2-actions';
 import { fmtDate } from '@/lib/format';
-import { moduleContext, ModuleHead, type ModProps } from './ModuleShell';
+import { moduleRole, ModuleHead, type ModProps } from './ModuleShell';
 
 type T = { id: number; subject: string; chapter: string; status: 'pending' | 'in_progress' | 'done'; done_on: string | null };
 
 export default async function SyllabusView({ role, searchParams }: ModProps) {
-  const { classes, classId } = await moduleContext(role, 'syllabus', searchParams);
-  const topics = classId
-    ? await q<T>(`SELECT id, subject, chapter, status, to_char(completed_on, 'YYYY-MM-DD') AS done_on FROM att.syllabus_topics WHERE class_id = $1 ORDER BY subject, position, id`, [classId])
-    : [];
+  await moduleRole(role);
+  const { classes, classId, topics } = await getData<{ classes: { id: number; name: string }[]; classId: number; topics: T[] }>('syllabus', { class: searchParams.class });
   const subjects = [...new Set(topics.map((t) => t.subject))];
   return (
     <>

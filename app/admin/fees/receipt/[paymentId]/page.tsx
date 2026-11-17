@@ -1,31 +1,22 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureSchema } from '@/lib/academic';
 import { sendReceipt } from '@/lib/fee-actions';
-import { getSchool } from '@/lib/settings';
 import { fmtDate, fmtMoney } from '@/lib/format';
 import PrintButton from '@/components/PrintButton';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ params, searchParams }: { params: Promise<{ paymentId: string }>; searchParams: Promise<{ ok?: string; err?: string }> }) {
-  const s = await requireRole('admin');
-  await ensureSchema();
+  await requireRole('admin');
   const { paymentId } = await params;
   const sp = await searchParams;
   const pid = Number(paymentId);
-  const [r] = await q<{ item_id: number; student: string; roll_no: number; class_name: string; item: string; amount: string; paid_on: string; method: string; note: string | null; balance: string }>(
-    `SELECT fi.id AS item_id, s.name AS student, s.roll_no, c.name AS class_name, fi.name AS item, p.amount, to_char(p.paid_on, 'YYYY-MM-DD') AS paid_on, p.method, p.note,
-            (d.amount - d.concession - COALESCE((SELECT SUM(amount) FROM att.fee_payments WHERE due_id = d.id), 0)) AS balance
-     FROM att.fee_payments p JOIN att.fee_dues d ON d.id = p.due_id
-     JOIN att.fee_items fi ON fi.id = d.fee_item_id JOIN att.students s ON s.id = d.student_id JOIN att.classes c ON c.id = fi.class_id
-     WHERE p.id = $1 AND c.school_id = $2`,
-    [pid, s.sid]
-  );
-  if (!r) notFound();
-  const school = await getSchool(s.sid);
+  const { r, school } = await getData<{
+    r: { item_id: number; student: string; roll_no: number; class_name: string; item: string; amount: string; paid_on: string; method: string; note: string | null; balance: string };
+    school: { name: string; address: string };
+  }>('fee-receipt', { id: pid });
   const row = (k: string, v: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px dashed #d1d5db' }}>
       <span style={{ color: '#6b7280' }}>{k}</span><strong>{v}</strong>

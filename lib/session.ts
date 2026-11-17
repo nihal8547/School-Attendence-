@@ -1,19 +1,15 @@
-import { SignJWT, jwtVerify } from 'jose';
+import { jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 export type Session = { uid: number; role: 'superadmin' | 'admin' | 'teacher'; name: string; sid: number };
 
-/** sid = school id (0 for the super admin, who belongs to no school). */
 export const homeFor = (role: Session['role']) => (role === 'superadmin' ? '/super' : role === 'admin' ? '/admin' : '/teacher');
 
 const key = () => new TextEncoder().encode(process.env.SESSION_SECRET || 'dev-only-secret');
 
-export async function createSession(s: Session) {
-  const token = await new SignJWT({ ...s })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime('12h')
-    .sign(key());
+/** The API signs the token at login; the web app only keeps it in an httpOnly cookie. */
+export async function setSessionToken(token: string) {
   (await cookies()).set('session', token, {
     httpOnly: true,
     sameSite: 'lax',
@@ -33,7 +29,6 @@ export async function getSession(): Promise<Session | null> {
   try {
     const { payload } = await jwtVerify(token, key());
     const role = payload.role as Session['role'];
-    // Older sign-ins (before multi-school) have no sid: they belong to school 1.
     const sid = role === 'superadmin' ? 0 : Number(payload.sid) || 1;
     return { uid: Number(payload.uid), role, name: String(payload.name), sid };
   } catch {

@@ -10,29 +10,42 @@
 # Change the network name below if yours differs:
 #   docker inspect n8n -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}'
 services:
-  app:
-    build: { context: ., target: runner }
-    container_name: school-attendance-app
+  # API server: business logic, database access, WhatsApp queue + scheduler. Internal only (no published port).
+  api:
+    build: { context: ./backend }
+    container_name: school-attendance-api
     env_file: .env
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://${SCHOOLDB_USER:-schooladmin}:${SCHOOLDB_PASSWORD}@schooldb:5432/${SCHOOLDB_NAME:-schooldb}}
       DATABASE_SSL: "false"
+      PORT: "4000"
       NODE_OPTIONS: "--max-old-space-size=256"
+    restart: unless-stopped
+    mem_limit: 350m
+    networks: [n8n_net]
+
+  # Thin web app. Talks only to the API (API_URL).
+  app:
+    build: { context: ., target: runner }
+    container_name: school-attendance-app
+    environment:
+      API_URL: http://api:4000
+      SESSION_SECRET: ${SESSION_SECRET}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      NODE_OPTIONS: "--max-old-space-size=200"
     ports:
       - "${APP_PORT:-3400}:3000"
     restart: unless-stopped
-    mem_limit: 350m
-    deploy:
-      resources:
-        limits:
-          memory: 350M
+    mem_limit: 250m
+    depends_on: [api]
     networks: [n8n_net]
 
-  # Optional: create/refresh the `att` schema and the first admin (safe to re-run):
-  #   docker compose -f docker-compose.server.yml run --rm db-setup
-  db-setup:
+  # Create/refresh the schema and the first admin / super admin (safe to re-run):
+  #   docker compose -f docker-compose.server.yml run --rm api-setup
+  api-setup:
     profiles: ["setup"]
-    build: { context: ., target: tools }
+    build: { context: ./backend }
+    command: ["node", "dist/cli-setup.js"]
     env_file: .env
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://${SCHOOLDB_USER:-schooladmin}:${SCHOOLDB_PASSWORD}@schooldb:5432/${SCHOOLDB_NAME:-schooldb}}

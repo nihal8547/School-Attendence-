@@ -1,28 +1,21 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureSchema } from '@/lib/academic';
-import { MODULES } from '@/lib/modules';
 import { updateSchool, setSchoolActive, setSchoolModules, addSchoolAdmin, resetAdminPassword } from '@/lib/super-actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ params, searchParams }: { params: Promise<{ schoolId: string }>; searchParams: Promise<{ ok?: string; err?: string }> }) {
   await requireRole('superadmin');
-  await ensureSchema();
   const id = Number((await params).schoolId);
   const sp = await searchParams;
-  const [school] = await q<{ id: number; name: string; address: string; active: boolean }>(`SELECT id, name, address, active FROM att.schools WHERE id = $1`, [id]);
-  if (!school) notFound();
-  const off = new Set((await q<{ module_key: string }>(`SELECT module_key FROM att.school_modules WHERE school_id = $1 AND NOT enabled`, [id])).map((r) => r.module_key));
-  const admins = await q<{ id: number; name: string; email: string }>(`SELECT id, name, email FROM att.users WHERE school_id = $1 AND role = 'admin' ORDER BY id`, [id]);
-  const [c] = await q<{ teachers: string; classes: string; students: string }>(
-    `SELECT (SELECT COUNT(*) FROM att.users WHERE school_id = $1 AND role = 'teacher') AS teachers,
-            (SELECT COUNT(*) FROM att.classes WHERE school_id = $1) AS classes,
-            (SELECT COUNT(*) FROM att.students st JOIN att.classes c ON c.id = st.class_id WHERE c.school_id = $1 AND st.active) AS students`,
-    [id]
-  );
+  const d = await getData<{
+    school: { id: number; name: string; address: string; active: boolean }; off: string[]; admins: { id: number; name: string; email: string }[];
+    c: { teachers: string; classes: string; students: string }; modules: { key: string; label: string; desc: string; group: boolean }[];
+  }>('super-school', { id });
+  const { school, admins, c, modules: MODULES } = d;
+  const off = new Set(d.off);
 
   return (
     <>

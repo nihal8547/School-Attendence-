@@ -1,11 +1,7 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { getLiveWaStatus } from '@/lib/wa';
-import { todayIST } from '@/lib/n8n';
 import AttendanceForm from '../AttendanceForm';
 import AutoSubmitForm from './AutoSubmitForm';
-import { holidayOn } from '@/lib/holidays';
-import { ensureSchema } from '@/lib/academic';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,10 +10,14 @@ export default async function TeacherHome({
 }: {
   searchParams: Promise<{ class?: string; date?: string; session?: string }>;
 }) {
-  const s = await requireRole('teacher');
+  await requireRole('teacher');
   const sp = await searchParams;
-  const classes = await q(`SELECT id, name FROM att.classes WHERE teacher_id = $1 ORDER BY name`, [s.uid]);
-  const me = { wa_status: await getLiveWaStatus(s.uid) };
+  const d = await getData<{
+    classes: { id: number; name: string }[]; waStatus: string; classId?: number; today?: string; date?: string; session?: string;
+    holiday?: string | null; students?: any[]; sent?: boolean;
+  }>('teacher-attendance', { class: sp.class, date: sp.date, session: sp.session });
+  const { classes } = d;
+  const me = { wa_status: d.waStatus };
 
   if (!classes.length) {
     return (
@@ -30,29 +30,13 @@ export default async function TeacherHome({
     );
   }
 
-  const classId = classes.find((c) => String(c.id) === sp.class)?.id ?? classes[0].id;
-  const today = todayIST();
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(sp.date || '') ? sp.date! : today;
-  const hourIST = Number(
-    new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', hour12: false })
-  );
-  const session =
-    sp.session === 'afternoon' || sp.session === 'morning' ? sp.session : hourIST < 12 ? 'morning' : 'afternoon';
-
-  await ensureSchema();
-  const holiday = await holidayOn(s.sid, date);
-
-  const students = await q(
-    `SELECT s.id, s.roll_no, s.name, a.status
-     FROM att.students s
-     LEFT JOIN att.attendance a ON a.student_id = s.id AND a.att_date = $2::date AND a.session = $3
-     WHERE s.class_id = $1 AND s.active ORDER BY s.roll_no, s.name`,
-    [classId, date, session]
-  );
-  const [sent] = await q(
-    `SELECT 1 AS x FROM att.session_marks WHERE class_id=$1 AND att_date=$2::date AND session=$3`,
-    [classId, date, session]
-  );
+  const classId = d.classId!;
+  const today = d.today!;
+  const date = d.date!;
+  const session = d.session!;
+  const holiday = d.holiday;
+  const students = d.students!;
+  const sent = d.sent ? { x: 1 } : undefined;
 
   return (
     <>

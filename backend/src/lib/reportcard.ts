@@ -1,8 +1,8 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { q } from '@/lib/db';
-import { grade } from '@/lib/academic';
-import { getSchool } from '@/lib/settings';
-import { classPolicy } from '@/lib/modules';
+import { q } from './db.js';
+import { grade } from './academic.js';
+import { getSchool } from './settings.js';
+import { classPolicy } from './modules.js';
 
 export type Card = {
   school: { name: string; address: string };

@@ -1,40 +1,27 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureSchema } from '@/lib/academic';
 import { recordPayment, sendFeeReminders, setConcession } from '@/lib/fee-actions';
-import { todayIST } from '@/lib/n8n';
 import { fmtDate, fmtMoney } from '@/lib/format';
 import ConfirmButton from '@/components/ConfirmButton';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ params, searchParams }: { params: Promise<{ itemId: string }>; searchParams: Promise<{ ok?: string; err?: string }> }) {
-  const s = await requireRole('admin');
-  await ensureSchema();
+  await requireRole('admin');
   const { itemId } = await params;
   const sp = await searchParams;
   const id = Number(itemId);
-  const [item] = await q<{ id: number; name: string; amount: string; due_date: string | null; class_name: string }>(
-    `SELECT fi.id, fi.name, fi.amount, to_char(fi.due_date, 'YYYY-MM-DD') AS due_date, c.name AS class_name
-     FROM att.fee_items fi JOIN att.classes c ON c.id = fi.class_id WHERE fi.id = $1 AND c.school_id = $2`,
-    [id, s.sid]
-  );
-  if (!item) notFound();
-  const rows = await q<{ due_id: number; roll_no: number; name: string; amount: string; concession: string; paid: string; last_payment: number | null }>(
-    `SELECT d.id AS due_id, s.roll_no, s.name, d.amount, d.concession,
-            COALESCE((SELECT SUM(p.amount) FROM att.fee_payments p WHERE p.due_id = d.id), 0) AS paid,
-            (SELECT MAX(p.id) FROM att.fee_payments p WHERE p.due_id = d.id) AS last_payment
-     FROM att.fee_dues d JOIN att.students s ON s.id = d.student_id
-     WHERE d.fee_item_id = $1 AND s.active ORDER BY s.roll_no, s.name`,
-    [id]
-  );
+  const { item, rows, today } = await getData<{
+    item: { id: number; name: string; amount: string; due_date: string | null; class_name: string };
+    rows: { due_id: number; roll_no: number; name: string; amount: string; concession: string; paid: string; last_payment: number | null }[];
+    today: string;
+  }>('fee-item', { id });
   const bal = (r: (typeof rows)[number]) => Number(r.amount) - Number(r.concession) - Number(r.paid);
   const billed = rows.reduce((a, r) => a + Number(r.amount) - Number(r.concession), 0);
   const paid = rows.reduce((a, r) => a + Number(r.paid), 0);
   const pending = rows.filter((r) => bal(r) > 0.001).length;
-  const today = todayIST();
 
   return (
     <>

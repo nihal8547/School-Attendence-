@@ -1,4 +1,5 @@
-import { q } from '@/lib/db';
+import { config } from '../config.js';
+import { q } from './db.js';
 
 /** Name and address of one school (each school is its own tenant). */
 export async function getSchool(schoolId: number) {
@@ -16,5 +17,5 @@ export async function schoolIdOfClass(classId: number): Promise<number> {
 }
 
 export function appBaseUrl(): string {
-  return (process.env.PUBLIC_APP_URL || '').replace(/\/+$/, '');
+  return config.publicAppUrl;
 }

@@ -1,10 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureAcademicTables } from '@/lib/academic';
-import { classHasModule, classPolicy } from '@/lib/modules';
-import { subjectGrade } from '@/lib/reportcard';
+import { subjectGrade } from '@/lib/grade';
 import { saveMarks, deleteExam, sendMarksheet } from '@/lib/academic-actions';
 import { sendReportCards } from '@/lib/reportcard-actions';
 import PrintButton from './PrintButton';
@@ -29,32 +27,15 @@ export default async function ExamSheet({
   examId: number;
   searchParams: { ok?: string; err?: string };
 }) {
-  const s = await requireRole(role);
-  await ensureAcademicTables();
+  await requireRole(role);
   const base = role === 'admin' ? '/admin' : '/teacher';
-
-  const [exam] = await q(
-    `SELECT e.id, e.name, e.class_id, c.name AS class_name, c.teacher_id, to_char(e.exam_date, 'DD Mon YYYY') AS date_label
-     FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1 AND c.school_id = $2`,
-    [examId, s.sid]
-  );
-  if (!exam || (role === 'teacher' && exam.teacher_id !== s.uid) || !(await classHasModule(exam.class_id, 'marks'))) notFound();
-  const policy = await classPolicy(exam.class_id);
+  const d = await getData<{
+    exam: any; policy: { grading: 'marks' | 'grades'; showRank: boolean }; cardsOn: boolean;
+    subjects: { subject: string; max_marks: number }[]; students: { id: number; roll_no: number; name: string }[];
+    markRows: { student_id: number; subject: string; marks: string }[];
+  }>('exam', { id: examId });
+  const { exam, policy, cardsOn, subjects, students, markRows } = d;
   const gradesOnly = policy.grading === 'grades';
-  const cardsOn = await classHasModule(exam.class_id, 'reportcards');
-
-  const subjects = await q<{ subject: string; max_marks: number }>(
-    `SELECT subject, max_marks FROM att.exam_subjects WHERE exam_id = $1 ORDER BY position`,
-    [examId]
-  );
-  const students = await q<{ id: number; roll_no: number; name: string }>(
-    `SELECT id, roll_no, name FROM att.students WHERE class_id = $1 AND active ORDER BY roll_no, name`,
-    [exam.class_id]
-  );
-  const markRows = await q<{ student_id: number; subject: string; marks: string }>(
-    `SELECT student_id, subject, marks FROM att.marks WHERE exam_id = $1`,
-    [examId]
-  );
   const marks = new Map(markRows.map((m) => [`${m.student_id}_${m.subject}`, Number(m.marks)]));
   const maxTotal = subjects.reduce((a, x) => a + x.max_marks, 0);
 

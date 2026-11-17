@@ -19,6 +19,57 @@ services:
       timeout: 5s
       retries: 20
 
+  # API server: all business logic, database access, queue + scheduler. Not published to the internet.
+  api:
+    build: { context: ./backend }
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://${SCHOOLDB_USER:-schooladmin}:${SCHOOLDB_PASSWORD}@schooldb:5432/${SCHOOLDB_NAME:-schooldb}}
+      DATABASE_SSL: "false"
+      PORT: "4000"
+    restart: unless-stopped
+    depends_on:
+      schooldb:
+        condition: service_healthy
+
+  # First admin / super admin (safe to re-run): docker compose run --rm api-setup
+  api-setup:
+    profiles: ["setup"]
+    build: { context: ./backend }
+    command: ["node", "dist/cli-setup.js"]
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://${SCHOOLDB_USER:-schooladmin}:${SCHOOLDB_PASSWORD}@schooldb:5432/${SCHOOLDB_NAME:-schooldb}}
+      DATABASE_SSL: "false"
+    restart: "no"
+    depends_on:
+      schooldb:
+        condition: service_healthy
+
+  # The web app (thin UI). Talks only to the API.
+  app:
+    build: { context: . , target: runner }
+    environment:
+      API_URL: http://api:4000
+      SESSION_SECRET: ${SESSION_SECRET}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - api
+
+volumes:
+      - schooldb_data:/var/lib/postgresql/data
+    ports:
+      # n8n connects here. Restrict port 5433 in your firewall to the n8n server only.
+      - "${SCHOOLDB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   # Creates the `att` schema (db/schema.sql) and the first admin. Safe to re-run.
   db-setup:
     build: { context: ., target: tools }

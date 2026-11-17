@@ -1,21 +1,15 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { addLeave, decideLeave, deleteLeave } from '@/lib/academic2-actions';
 import { fmtDate } from '@/lib/format';
-import { todayIST } from '@/lib/n8n';
-import { moduleContext, ModuleHead, type ModProps } from './ModuleShell';
+import { moduleRole, ModuleHead, type ModProps } from './ModuleShell';
 
 export default async function LeavesView({ role, searchParams }: ModProps) {
-  const { classes, classId } = await moduleContext(role, 'leaves', searchParams);
-  const students = classId ? await q<{ id: number; roll_no: number; name: string }>(`SELECT id, roll_no, name FROM att.students WHERE class_id = $1 AND active ORDER BY roll_no, name`, [classId]) : [];
-  const rows = classId
-    ? await q<{ id: number; student: string; f: string; t: string; reason: string; status: string }>(
-        `SELECT l.id, s.name AS student, to_char(l.from_date,'YYYY-MM-DD') AS f, to_char(l.to_date,'YYYY-MM-DD') AS t, l.reason, l.status
-         FROM att.leave_requests l JOIN att.students s ON s.id = l.student_id WHERE s.class_id = $1
-         ORDER BY (l.status = 'pending') DESC, l.from_date DESC LIMIT 80`,
-        [classId]
-      )
-    : [];
-  const today = todayIST();
+  await moduleRole(role);
+  const { classes, classId, students, rows, today } = await getData<{
+    classes: { id: number; name: string }[]; classId: number; today: string;
+    students: { id: number; roll_no: number; name: string }[];
+    rows: { id: number; student: string; f: string; t: string; reason: string; status: string }[];
+  }>('leaves', { class: searchParams.class });
   return (
     <>
       <ModuleHead title="Leave Requests" intro="Record a leave the parent told you about, approve or reject it, and inform the parent on WhatsApp." searchParams={searchParams} classes={classes} classId={classId} />

@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation';
-import { q } from '@/lib/db';
-import { getSession, homeFor, type Session } from '@/lib/session';
+import { redirect } from '../compat.js';
+import { q } from './db.js';
+import { getSession, homeFor, type Session } from './session.js';
 
 /** Admin may use any class; a teacher only their own. */
 export async function allowClass(classId: number): Promise<Session> {

@@ -1,23 +1,14 @@
 import Link from 'next/link';
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureSchema } from '@/lib/academic';
 import { createSchool } from '@/lib/super-actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
   await requireRole('superadmin');
-  await ensureSchema();
   const sp = await searchParams;
-  const schools = await q<{ id: number; name: string; active: boolean; teachers: string; classes: string; students: string; created: string }>(
-    `SELECT s.id, s.name, s.active,
-            (SELECT COUNT(*) FROM att.users u WHERE u.school_id = s.id AND u.role = 'teacher') AS teachers,
-            (SELECT COUNT(*) FROM att.classes c WHERE c.school_id = s.id) AS classes,
-            (SELECT COUNT(*) FROM att.students st JOIN att.classes c ON c.id = st.class_id WHERE c.school_id = s.id AND st.active) AS students,
-            to_char(s.created_at, 'DD Mon YYYY') AS created
-     FROM att.schools s ORDER BY s.name`
-  );
+  const { schools } = await getData<{ schools: { id: number; name: string; active: boolean; teachers: string; classes: string; students: string; created: string }[] }>('super-schools');
   const tot = (k: 'teachers' | 'students') => schools.reduce((a, s) => a + Number(s[k]), 0);
 
   return (

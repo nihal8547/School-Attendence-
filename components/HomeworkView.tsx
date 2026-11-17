@@ -1,19 +1,14 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { addHomework, deleteHomework } from '@/lib/academic2-actions';
 import { fmtDate } from '@/lib/format';
-import { todayIST } from '@/lib/n8n';
-import { moduleContext, ModuleHead, type ModProps } from './ModuleShell';
+import { moduleRole, ModuleHead, type ModProps } from './ModuleShell';
 
 export default async function HomeworkView({ role, searchParams }: ModProps) {
-  const { classes, classId } = await moduleContext(role, 'homework', searchParams);
-  const rows = classId
-    ? await q<{ id: number; subject: string; title: string; details: string; due: string | null; created: string }>(
-        `SELECT id, subject, title, details, to_char(due_date, 'YYYY-MM-DD') AS due, to_char(created_at AT TIME ZONE 'Asia/Kolkata', 'DD Mon') AS created
-         FROM att.homework WHERE class_id = $1 ORDER BY created_at DESC LIMIT 60`,
-        [classId]
-      )
-    : [];
-  const today = todayIST();
+  await moduleRole(role);
+  const { classes, classId, rows, today } = await getData<{
+    classes: { id: number; name: string }[]; classId: number; today: string;
+    rows: { id: number; subject: string; title: string; details: string; due: string | null; created: string }[];
+  }>('homework', { class: searchParams.class });
   return (
     <>
       <ModuleHead title="Homework" intro="Give homework by subject. Parents can get it on WhatsApp." searchParams={searchParams} classes={classes} classId={classId} />

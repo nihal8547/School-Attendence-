@@ -1,19 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureSchema } from '@/lib/academic';
-import { classHasModule } from '@/lib/modules';
-import { loadCards, subjectGrade } from '@/lib/reportcard';
+import { subjectGrade } from '@/lib/grade';
 import PrintButton from './PrintButton';
 
 export default async function ReportCardsPrint({ role, examId, studentId }: { role: 'admin' | 'teacher'; examId: number; studentId?: number }) {
-  const s = await requireRole(role);
-  await ensureSchema();
-  const [own] = await q<{ teacher_id: number | null; class_id: number }>(`SELECT c.teacher_id, c.id AS class_id FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1 AND c.school_id = $2`, [examId, s.sid]);
-  if (!own || (role === 'teacher' && own.teacher_id !== s.uid) || !(await classHasModule(own.class_id, 'reportcards'))) notFound();
-  const cards = await loadCards(examId, studentId);
-  if (!cards.length) notFound();
+  await requireRole(role);
+  const { cards } = await getData<{ cards: any[] }>('report-cards', { exam: examId, student: studentId });
   const base = role === 'admin' ? '/admin' : '/teacher';
 
   return (

@@ -1,5 +1,5 @@
-import { q } from '@/lib/db';
-import { callN8n } from '@/lib/n8n';
+import { q } from './db.js';
+import { callN8n } from './n8n.js';
 
 export type Notice = {
   classId: number;

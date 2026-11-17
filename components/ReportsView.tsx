@@ -1,11 +1,10 @@
-import { requireModule } from '@/lib/modules';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureSchema } from '@/lib/academic';
-import { classesFor } from '@/lib/access';
 import { fmtDate, fmtPhone } from '@/lib/format';
-import { parseParams, scopeClassIds, studentSummary, absenteeList, classComparison, workingDays, pct } from '@/lib/reports';
 import AutoSubmitForm from '@/app/teacher/attendance/AutoSubmitForm';
 import PrintButton from './PrintButton';
+
+const pct = (p: number | string, t: number | string) => (Number(t) ? (Number(p) / Number(t)) * 100 : null);
 
 function Bar({ value }: { value: number | null }) {
   if (value === null) return <span className="muted">—</span>;
@@ -25,12 +24,14 @@ export default async function ReportsView({
   role: 'admin' | 'teacher';
   searchParams: { type?: string; class?: string; from?: string; to?: string };
 }) {
-  const s = await requireRole(role);
-  await ensureSchema();
-  await requireModule(s, 'reports', role === 'admin' ? '/admin' : '/teacher');
-  const classes = await classesFor(s);
-  const p = parseParams(searchParams, role);
-  const ids = await scopeClassIds(s, p.classId);
+  await requireRole(role);
+  const d = await getData<{
+    classes: { id: number; name: string }[];
+    params: { type: 'students' | 'absentees' | 'classes'; classId: number | null; from: string; to: string };
+    days?: number; stu?: any[]; abs?: any[]; cls?: any[];
+  }>('reports', { type: searchParams.type, class: searchParams.class, from: searchParams.from, to: searchParams.to });
+  const { classes } = d;
+  const p = d.params;
   const qs = new URLSearchParams({ type: p.type, class: p.classId ? String(p.classId) : '', from: p.from, to: p.to }).toString();
 
   if (!classes.length) {
@@ -42,10 +43,10 @@ export default async function ReportsView({
     );
   }
 
-  const days = await workingDays(ids, p.from, p.to);
-  const stu = p.type === 'students' ? await studentSummary(ids, p.from, p.to) : [];
-  const abs = p.type === 'absentees' ? await absenteeList(ids, p.from, p.to) : [];
-  const cls = p.type === 'classes' ? await classComparison(ids, p.from, p.to) : [];
+  const days = d.days ?? 0;
+  const stu = d.stu ?? [];
+  const abs = d.abs ?? [];
+  const cls = d.cls ?? [];
   const sumP = stu.reduce((a, r) => a + Number(r.present), 0);
   const sumT = stu.reduce((a, r) => a + Number(r.total), 0);
   const avg = pct(sumP, sumT);

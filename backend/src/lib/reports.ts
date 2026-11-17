@@ -1,7 +1,7 @@
-import { q } from '@/lib/db';
-import { getSession, type Session } from '@/lib/session';
-import { classesFor } from '@/lib/access';
-import { todayIST } from '@/lib/n8n';
+import { q } from './db.js';
+import { getSession, type Session } from './session.js';
+import { classesFor } from './access.js';
+import { todayIST } from './n8n.js';
 
 export type ReportParams = { type: 'students' | 'absentees' | 'classes'; classId: number | null; from: string; to: string };
 

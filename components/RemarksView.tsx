@@ -1,20 +1,16 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { addRemark, deleteRemark } from '@/lib/academic2-actions';
-import { moduleContext, ModuleHead, type ModProps } from './ModuleShell';
+import { moduleRole, ModuleHead, type ModProps } from './ModuleShell';
 
 const ICON: Record<string, string> = { achievement: '🏆', behavior: '📌', general: '📝' };
 
 export default async function RemarksView({ role, searchParams }: ModProps) {
-  const { classes, classId } = await moduleContext(role, 'remarks', searchParams);
-  const students = classId ? await q<{ id: number; roll_no: number; name: string }>(`SELECT id, roll_no, name FROM att.students WHERE class_id = $1 AND active ORDER BY roll_no, name`, [classId]) : [];
-  const rows = classId
-    ? await q<{ id: number; student: string; kind: string; note: string; created: string; by: string | null }>(
-        `SELECT r.id, s.name AS student, r.kind, r.note, to_char(r.created_at AT TIME ZONE 'Asia/Kolkata', 'DD Mon YYYY') AS created, u.name AS by
-         FROM att.student_remarks r JOIN att.students s ON s.id = r.student_id LEFT JOIN att.users u ON u.id = r.created_by
-         WHERE s.class_id = $1 ORDER BY r.created_at DESC LIMIT 60`,
-        [classId]
-      )
-    : [];
+  await moduleRole(role);
+  const { classes, classId, students, rows } = await getData<{
+    classes: { id: number; name: string }[]; classId: number;
+    students: { id: number; roll_no: number; name: string }[];
+    rows: { id: number; student: string; kind: string; note: string; created: string; by: string | null }[];
+  }>('remarks', { class: searchParams.class });
   return (
     <>
       <ModuleHead title="Remarks & Achievements" intro="Note a student's achievement, behaviour or any remark. Send it to the parent if you want." searchParams={searchParams} classes={classes} classId={classId} />

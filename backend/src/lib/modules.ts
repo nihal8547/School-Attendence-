@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation';
-import { q } from '@/lib/db';
-import type { Session } from '@/lib/session';
+import { redirect } from '../compat.js';
+import { q } from './db.js';
+import type { Session } from './session.js';
 
 /**
  * Modules a Super Admin can switch on/off per school (school-level), and the school admin can then

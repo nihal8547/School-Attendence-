@@ -1,14 +1,10 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureSchema } from '@/lib/academic';
-import { getSchool } from '@/lib/settings';
 import { changePassword, updateProfile, saveSchool } from '@/lib/account-actions';
 
 export default async function AccountView({ role, searchParams }: { role: 'superadmin' | 'admin' | 'teacher'; searchParams: { ok?: string; err?: string } }) {
-  const s = await requireRole(role);
-  await ensureSchema();
-  const [u] = await q<{ name: string; email: string; phone: string | null }>(`SELECT name, email, phone FROM att.users WHERE id = $1`, [s.uid]);
-  const school = role === 'admin' ? await getSchool(s.sid) : null;
+  await requireRole(role);
+  const { u, school } = await getData<{ u: { name: string; email: string; phone: string | null }; school: { name: string; address: string } | null }>('account');
   const national = u.phone ? u.phone.replace(/^91/, '') : '';
 
   return (

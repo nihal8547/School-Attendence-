@@ -3,12 +3,24 @@
 Teachers mark Morning/Afternoon attendance (✓ green / ✗ red). Parents get a WhatsApp message via
 n8n (n8n.webbea.qa) and Evolution API (evolution.webbea.qa), sent from the class teacher's own number.
 
+## Architecture (v3): thin web app + API server
+
+```
+Browser -> Next.js web app (UI only) -> API server (backend/, Fastify + PostgreSQL) -> n8n (WhatsApp sending only)
+```
+- **backend/** is the only thing that touches the database. It has the business rules, school/class access checks, validation (zod), rate limiting, audit log, caching, pagination, PDF and CSV generation, the durable WhatsApp queue and the background jobs (queue sweeper every 2 min, 3-day absence alert daily 17:30 IST). Database changes are numbered files in `backend/migrations` applied automatically at start (tracked in `att.schema_migrations`).
+- **The web app** (Next.js) only renders pages. It calls the API with the signed-in session token and has no database, bcrypt or PDF code, so it is small and fast.
+- **n8n** now only sends WhatsApp messages (send queue, notices, media, WhatsApp connect). The old n8n *Consecutive Absence Alert* and *Queue Sweeper* workflows are replaced by the API jobs; once the API is running you can unpublish those two in n8n (running both is harmless, the SQL is idempotent).
+- The API is **not published** to the internet (only the web app container can reach it). The report-card link sent on WhatsApp still uses `PUBLIC_APP_URL` and is proxied by the web app.
+- Env: the API needs `DATABASE_URL`, `SESSION_SECRET` (same value as the web app), `N8N_BASE_URL`, `N8N_WEBHOOK_SECRET`, `PUBLIC_APP_URL`. The web app needs `API_URL` (set by compose), `SESSION_SECRET`, `COOKIE_SECURE`.
+- Local dev: `cd backend && npm i && npm run dev`, then `npm run dev` in the repo root with `API_URL=http://localhost:4000`.
+
 ## Docker (recommended) - with its own SchoolDB
 ```
 cp .env.example .env     # set SCHOOLDB_PASSWORD, SESSION_SECRET, N8N_WEBHOOK_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
 docker compose up -d --build
 ```
-This starts three things: `schooldb` (Postgres, database `schooldb`), `db-setup` (creates the `att` schema + admin, safe to re-run) and `app` on http://localhost:3000.
+This starts: `schooldb` (Postgres, database `schooldb`), `api` (the API server) and `api-setup` (creates the first admin / super admin, safe to re-run) and `app` on http://localhost:3000.
 
 ### Connect n8n to SchoolDB (required)
 The n8n workflows read/write the same data, so in n8n create a Postgres credential named **SchoolDB Postgres**:
@@ -16,7 +28,7 @@ host = this server's address, port = 5433, database = schooldb, user/password = 
 Then point the 3 "Attendance ·" workflows at that credential. Restrict port 5433 in the firewall to the n8n server.
 
 ## Manual setup
-1. Database: tables already created in schema `att` (see db/schema.sql). Use the same Postgres as the n8n "Postgres account" credential.
+1. Database: tables already created in schema `att` (see backend/migrations). Use the same Postgres as the n8n "Postgres account" credential.
 2. `.env.local`: set `DATABASE_URL` (and `DATABASE_SSL=true` if needed). `N8N_WEBHOOK_SECRET` is already filled in.
 3. `npm install`
 4. Create admin: `ADMIN_EMAIL=you@school.in ADMIN_PASSWORD=choose-strong ADMIN_NAME=Principal node --env-file=.env.local scripts/seed-admin.mjs`
@@ -62,7 +74,7 @@ Submitting attendance saves the marks **and** queues every parent message in one
 
 ## Multi-school, Super Admin, Class Groups & Modules
 
-- **Super Admin** (`/super`): creates schools, adds a school admin for each, suspends a school, and switches modules on/off per school. Create one with `SUPERADMIN_EMAIL` + `SUPERADMIN_PASSWORD` (min 8 chars) in `.env`, then run `node scripts/setup-db.mjs` (or `docker compose -f docker-compose.server.yml run --rm app node scripts/setup-db.mjs`). Change the password in *My Account* after the first login.
+- **Super Admin** (`/super`): creates schools, adds a school admin for each, suspends a school, and switches modules on/off per school. Create one with `SUPERADMIN_EMAIL` + `SUPERADMIN_PASSWORD` (min 8 chars) in `.env`, then run `docker compose -f docker-compose.server.yml run --rm api-setup`. Change the password in *My Account* after the first login.
 - **Existing data** becomes school 1 automatically (schema migration runs on first page load).
 - **Class Groups** (`/admin/groups`): school admin makes groups (Primary, Upper Primary, Secondary…), assigns classes to a group, and switches modules per group. A module is active for a class only if the school has it ON *and* its group does not turn it OFF.
 - **Grading scheme per group**: `marks` (total, %, rank) or `grades` (subject and overall grades only; rank optional). Used in mark sheets, WhatsApp results and report cards.

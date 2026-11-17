@@ -1,41 +1,16 @@
-import { q } from '@/lib/db';
-import { requireModule } from '@/lib/modules';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { ensureSchema } from '@/lib/academic';
-import { classesFor } from '@/lib/access';
 import { sendAnnouncement } from '@/lib/announce-actions';
 import ConfirmButton from './ConfirmButton';
 
 export default async function AnnouncementsView({ role, searchParams }: { role: 'admin' | 'teacher'; searchParams: { ok?: string; err?: string } }) {
-  const s = await requireRole(role);
-  await ensureSchema();
-  await requireModule(s, 'announcements', role === 'admin' ? '/admin' : '/teacher');
-  const classes = await classesFor(s);
-  const counts = await q<{ class_id: number; n: string }>(
-    `SELECT st.class_id, COUNT(DISTINCT g.phone) AS n FROM att.guardians g JOIN att.students st ON st.id = g.student_id AND st.active
-     JOIN att.classes cc ON cc.id = st.class_id
-     WHERE g.opt_in AND cc.school_id = $1 GROUP BY st.class_id`,
-    [s.sid]
-  );
-  const cnt = new Map(counts.map((c) => [c.class_id, Number(c.n)]));
-  const [{ total }] = await q<{ total: string }>(
-    `SELECT COUNT(DISTINCT g.phone) AS total FROM att.guardians g JOIN att.students st ON st.id = g.student_id AND st.active JOIN att.classes cc ON cc.id = st.class_id WHERE g.opt_in AND cc.school_id = $1`,
-    [s.sid]
-  );
-
-  const history = await q<{ id: number; title: string; audience: string; created: string; recipients: number; sent: string; failed: string; pending: string }>(
-    `SELECT a.id, a.title,
-            CASE WHEN a.all_school THEN 'Whole school' ELSE COALESCE('Class ' || c.name, 'Class') END AS audience,
-            to_char(a.created_at AT TIME ZONE 'Asia/Kolkata', 'DD Mon, HH12:MI AM') AS created,
-            a.recipients,
-            (SELECT COUNT(*) FROM att.notice_log n WHERE n.kind='announcement' AND n.ref_id = a.id AND n.status='sent') AS sent,
-            (SELECT COUNT(*) FROM att.notice_log n WHERE n.kind='announcement' AND n.ref_id = a.id AND n.status='failed') AS failed,
-            (SELECT COUNT(*) FROM att.notice_log n WHERE n.kind='announcement' AND n.ref_id = a.id AND n.status='queued') AS pending
-     FROM att.announcements a LEFT JOIN att.classes c ON c.id = a.class_id
-     WHERE a.school_id = $3 AND ($1 = 'admin' OR a.created_by = $2)
-     ORDER BY a.id DESC LIMIT 30`,
-    [role, s.uid, s.sid]
-  );
+  await requireRole(role);
+  const d = await getData<{
+    classes: { id: number; name: string }[]; counts: [number, number][]; total: number;
+    history: { id: number; title: string; audience: string; created: string; recipients: number; sent: string; failed: string; pending: string }[];
+  }>('announcements');
+  const { classes, total, history } = d;
+  const cnt = new Map<number, number>(d.counts);
 
   return (
     <>

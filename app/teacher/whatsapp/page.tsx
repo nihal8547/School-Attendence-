@@ -1,13 +1,12 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { getLiveWaStatus } from '@/lib/wa';
 import ConnectPanel from './ConnectPanel';
 
 export const dynamic = 'force-dynamic';
 
 export default async function WhatsAppPage() {
-  const s = await requireRole('teacher');
-  const me = { wa_status: await getLiveWaStatus(s.uid) };
+  await requireRole('teacher');
+  const me = { wa_status: (await getData<{ waStatus: string }>('teacher-whatsapp')).waStatus };
 
   return (
     <>

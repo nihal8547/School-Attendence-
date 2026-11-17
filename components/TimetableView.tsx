@@ -1,7 +1,6 @@
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
-import { requireModule, classesForModule } from '@/lib/modules';
-import { ensureAcademicTables, DAYS, PERIODS } from '@/lib/academic';
+import { DAYS, PERIODS } from '@/lib/grade';
 import { saveTimetable, sendTimetable } from '@/lib/academic-actions';
 import ClassPicker from './ClassPicker';
 import PrintButton from './PrintButton';
@@ -14,11 +13,9 @@ export default async function TimetableView({
   role: 'admin' | 'teacher';
   searchParams: { class?: string; ok?: string; err?: string };
 }) {
-  const s = await requireRole(role);
-  await ensureAcademicTables();
+  await requireRole(role);
   const base = role === 'admin' ? '/admin' : '/teacher';
-  await requireModule(s, 'timetable', base);
-  const classes = await classesForModule(s, 'timetable');
+  const { classes, classId, rows } = await getData<{ classes: { id: number; name: string }[]; classId: number; rows: { day_of_week: number; period: number; subject: string }[] }>('timetable', { class: searchParams.class });
 
   if (!classes.length) {
     return (
@@ -29,12 +26,7 @@ export default async function TimetableView({
     );
   }
 
-  const classId = classes.find((c) => String(c.id) === searchParams.class)?.id ?? classes[0].id;
   const className = classes.find((c) => c.id === classId)!.name;
-  const rows = await q<{ day_of_week: number; period: number; subject: string }>(
-    `SELECT day_of_week, period, subject FROM att.timetable WHERE class_id = $1`,
-    [classId]
-  );
   const cell = new Map(rows.map((r) => [`${r.day_of_week}_${r.period}`, r.subject]));
 
   return (

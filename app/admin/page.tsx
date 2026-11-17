@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { q } from '@/lib/db';
+import { getData } from '@/lib/api';
 import { adminResetPassword } from '@/lib/account-actions';
 import { requireRole } from '@/lib/session';
 import { fmtPhone } from '@/lib/format';
@@ -11,19 +11,13 @@ const initials = (n: string) =>
   n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
 
 export default async function AdminHome({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string; tab?: string }> }) {
-  const adm = await requireRole('admin');
+  await requireRole('admin');
   const { ok, err, tab: tabParam } = await searchParams;
   const tab = tabParam === 'classes' ? 'classes' : 'teachers';
-  const teachers = await q<{ id: number; name: string; email: string; phone: string | null; wa_status: string }>(
-    `SELECT id, name, email, phone, wa_status FROM att.users WHERE role='teacher' AND school_id = $1 ORDER BY name`,
-    [adm.sid]
-  );
-  const classes = await q<{ id: number; name: string; teacher_id: number | null; teacher_name: string | null; students: string }>(
-    `SELECT c.id, c.name, c.teacher_id, u.name AS teacher_name,
-            (SELECT COUNT(*) FROM att.students s WHERE s.class_id = c.id AND s.active) AS students
-     FROM att.classes c LEFT JOIN att.users u ON u.id = c.teacher_id WHERE c.school_id = $1 ORDER BY c.name`,
-    [adm.sid]
-  );
+  const { teachers, classes } = await getData<{
+    teachers: { id: number; name: string; email: string; phone: string | null; wa_status: string }[];
+    classes: { id: number; name: string; teacher_id: number | null; teacher_name: string | null; students: string }[];
+  }>('admin-home');
   const totalStudents = classes.reduce((a, c) => a + Number(c.students), 0);
   const connected = teachers.filter((t) => t.wa_status === 'connected').length;
   const unassigned = classes.filter((c) => !c.teacher_id).length;
