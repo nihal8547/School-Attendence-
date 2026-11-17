@@ -1,4 +1,5 @@
 import { q } from '@/lib/db';
+import { adminResetPassword } from '@/lib/account-actions';
 import { requireRole } from '@/lib/session';
 import { createTeacher, createClass, assignTeacher } from './actions';
 
@@ -70,6 +71,7 @@ export default async function AdminHome({
                 <th>Email</th>
                 <th>Phone</th>
                 <th>WhatsApp Status</th>
+                <th>Password</th>
               </tr>
             </thead>
             <tbody>
@@ -83,11 +85,21 @@ export default async function AdminHome({
                       {t.wa_status === 'connected' ? '● Connected' : '○ Disconnected'}
                     </span>
                   </td>
+                  <td>
+                    <details>
+                      <summary style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: 600 }}>Reset</summary>
+                      <form action={adminResetPassword} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <input type="hidden" name="user_id" value={t.id} />
+                        <input name="password" type="text" minLength={8} placeholder="New password" required style={{ minWidth: 150 }} />
+                        <button type="submit" style={{ padding: '8px 14px' }}>Set</button>
+                      </form>
+                    </details>
+                  </td>
                 </tr>
               ))}
               {!teachers.length && (
                 <tr>
-                  <td colSpan={4} className="muted" style={{ textAlign: 'center', padding: '24px 0' }}>
+                  <td colSpan={5} className="muted" style={{ textAlign: 'center', padding: '24px 0' }}>
                     No teachers registered yet.
                   </td>
                 </tr>

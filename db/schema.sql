@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS att.marks (
 CREATE TABLE IF NOT EXISTS att.notice_log (
   id         BIGSERIAL PRIMARY KEY,
   batch      TEXT NOT NULL,
-  kind       TEXT NOT NULL CHECK (kind IN ('timetable','marksheet')),
+  kind       TEXT NOT NULL,
   class_id   INT NOT NULL REFERENCES att.classes(id) ON DELETE CASCADE,
   exam_id    INT REFERENCES att.exams(id) ON DELETE CASCADE,
   student_id INT REFERENCES att.students(id) ON DELETE SET NULL,
@@ -121,3 +121,76 @@ CREATE TABLE IF NOT EXISTS att.notice_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS notice_log_batch_idx ON att.notice_log(batch);
+
+-- Newer features. Older databases get the extra columns/constraints here.
+ALTER TABLE att.notice_log DROP CONSTRAINT IF EXISTS notice_log_kind_check;
+ALTER TABLE att.notice_log ADD COLUMN IF NOT EXISTS ref_id     INT;
+ALTER TABLE att.notice_log ADD COLUMN IF NOT EXISTS media_url  TEXT;
+ALTER TABLE att.notice_log ADD COLUMN IF NOT EXISTS media_name TEXT;
+
+CREATE TABLE IF NOT EXISTS att.settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS att.holidays (
+  id           SERIAL PRIMARY KEY,
+  holiday_date DATE NOT NULL UNIQUE,
+  name         TEXT NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS att.announcements (
+  id          SERIAL PRIMARY KEY,
+  title       TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  class_id    INT REFERENCES att.classes(id) ON DELETE SET NULL,
+  all_school  BOOLEAN NOT NULL DEFAULT FALSE,
+  created_by  INT REFERENCES att.users(id) ON DELETE SET NULL,
+  recipients  INT NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS att.absence_alerts (
+  student_id INT NOT NULL REFERENCES att.students(id) ON DELETE CASCADE,
+  last_date  DATE NOT NULL,
+  days       INT NOT NULL DEFAULT 3,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (student_id, last_date)
+);
+
+CREATE TABLE IF NOT EXISTS att.fee_items (
+  id         SERIAL PRIMARY KEY,
+  class_id   INT NOT NULL REFERENCES att.classes(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  amount     NUMERIC(10,2) NOT NULL CHECK (amount >= 0),
+  due_date   DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS att.fee_dues (
+  id          SERIAL PRIMARY KEY,
+  fee_item_id INT NOT NULL REFERENCES att.fee_items(id) ON DELETE CASCADE,
+  student_id  INT NOT NULL REFERENCES att.students(id) ON DELETE CASCADE,
+  amount      NUMERIC(10,2) NOT NULL CHECK (amount >= 0),
+  concession  NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (concession >= 0),
+  UNIQUE (fee_item_id, student_id)
+);
+
+CREATE TABLE IF NOT EXISTS att.fee_payments (
+  id         SERIAL PRIMARY KEY,
+  due_id     INT NOT NULL REFERENCES att.fee_dues(id) ON DELETE CASCADE,
+  amount     NUMERIC(10,2) NOT NULL CHECK (amount > 0),
+  paid_on    DATE NOT NULL DEFAULT CURRENT_DATE,
+  method     TEXT NOT NULL DEFAULT 'Cash',
+  note       TEXT,
+  created_by INT REFERENCES att.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS att.password_resets (
+  user_id    INT PRIMARY KEY REFERENCES att.users(id) ON DELETE CASCADE,
+  otp_hash   TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  attempts   INT NOT NULL DEFAULT 0
+);

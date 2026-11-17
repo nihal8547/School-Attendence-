@@ -4,6 +4,7 @@ import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
 import { ensureAcademicTables } from '@/lib/academic';
 import { saveMarks, deleteExam, sendMarksheet } from '@/lib/academic-actions';
+import { sendReportCards } from '@/lib/reportcard-actions';
 import PrintButton from './PrintButton';
 import ConfirmButton from './ConfirmButton';
 
@@ -133,7 +134,7 @@ export default async function ExamSheet({
               <tr>
                 <th>Rank</th><th>Roll</th><th>Student</th>
                 {subjects.map((sub) => <th key={sub.subject}>{sub.subject}</th>)}
-                <th>Total / {maxTotal}</th><th>%</th><th>Grade</th>
+                <th>Total / {maxTotal}</th><th>%</th><th>Grade</th><th className="no-print">Card</th>
               </tr>
             </thead>
             <tbody>
@@ -150,6 +151,7 @@ export default async function ExamSheet({
                   <td><strong>{r.complete ? r.total : '—'}</strong></td>
                   <td>{r.complete ? r.pct.toFixed(1) : '—'}</td>
                   <td>{r.complete ? grade(r.pct) : '—'}</td>
+                  <td className="no-print">{r.complete ? <a href={`/api/report-card?exam=${examId}&student=${r.id}`} target="_blank" rel="noreferrer">PDF</a> : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -169,6 +171,23 @@ export default async function ExamSheet({
           <ConfirmButton message={`Send ${exam.name} marks to parents on WhatsApp?`}>Send Marks</ConfirmButton>
         </div>
       </form>
+
+      <div className="card no-print">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <strong>Report cards (PDF)</strong>
+            <div className="muted">Print or download a report card for each student, or send the PDF to every parent on WhatsApp.</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link className="btn ghost" href={`${base}/marks/${examId}/cards`}>🖨 View / print all</Link>
+            <form action={sendReportCards}>
+              <input type="hidden" name="exam_id" value={examId} />
+              <input type="hidden" name="base" value={base} />
+              <ConfirmButton message={`Send report card PDFs for ${exam.name} to parents on WhatsApp?`}>📄 Send PDFs</ConfirmButton>
+            </form>
+          </div>
+        </div>
+      </div>
 
       <form action={deleteExam} className="no-print" style={{ marginTop: 8 }}>
         <input type="hidden" name="exam_id" value={examId} />

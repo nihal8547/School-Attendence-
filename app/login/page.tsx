@@ -10,8 +10,8 @@ const features = [
   { t: 'Every message tracked', d: 'See what was sent, and retry anything that failed.' },
 ];
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; reset?: string }> }) {
+  const { error, reset } = await searchParams;
 
   return (
     <div className="auth-page">
@@ -58,6 +58,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <h1>Welcome back</h1>
           <p className="auth-sub">Sign in to continue to your dashboard.</p>
 
+          {reset && <div className="msg" style={{ marginBottom: 16 }}>✓ Password changed. Please sign in with your new password.</div>}
           <LoginForm action={login} error={!!error} />
 
           <InstallApp className="auth-install" />

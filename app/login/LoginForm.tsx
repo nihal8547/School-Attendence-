@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useFormStatus } from 'react-dom';
+import Link from 'next/link';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -54,6 +55,8 @@ export default function LoginForm({ action, error }: { action: (formData: FormDa
           </button>
         </div>
       </label>
+
+      <Link href="/forgot" className="auth-forgot">Forgot password?</Link>
 
       <SubmitButton />
     </form>

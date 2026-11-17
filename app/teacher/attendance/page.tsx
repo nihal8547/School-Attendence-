@@ -4,6 +4,8 @@ import { getLiveWaStatus } from '@/lib/wa';
 import { todayIST } from '@/lib/n8n';
 import AttendanceForm from '../AttendanceForm';
 import AutoSubmitForm from './AutoSubmitForm';
+import { holidayOn } from '@/lib/holidays';
+import { ensureSchema } from '@/lib/academic';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +38,9 @@ export default async function TeacherHome({
   );
   const session =
     sp.session === 'afternoon' || sp.session === 'morning' ? sp.session : hourIST < 12 ? 'morning' : 'afternoon';
+
+  await ensureSchema();
+  const holiday = await holidayOn(date);
 
   const students = await q(
     `SELECT s.id, s.roll_no, s.name, a.status
@@ -98,6 +103,10 @@ export default async function TeacherHome({
           </button>
         </AutoSubmitForm>
       </div>
+
+      {holiday && (
+        <div className="msg err">🏖️ {date} is a holiday: {holiday}. Attendance cannot be marked for this date.</div>
+      )}
 
       {sent && (
         <div className="msg">

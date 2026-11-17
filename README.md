@@ -43,3 +43,16 @@ docker compose -f docker-compose.server.yml up -d --build
 ```
 
 Stop the local copy (`docker compose down`) so nobody marks attendance in the wrong database.
+
+## Modules (v2)
+
+- **Holiday calendar** – admin adds holidays/ranges (optional WhatsApp notice); attendance is blocked on holidays.
+- **Announcements** – admin to all parents, teachers to their own class, sent via the class teacher's WhatsApp.
+- **Reports & export** – student-wise %, absentee list, class comparison; CSV download and print.
+- **Fees** – fee items per class, concessions, payments, printable receipts, WhatsApp reminders/receipts.
+- **Report card PDF** – per-student PDF, print-all page, and send PDFs to parents on WhatsApp.
+- **Consecutive absence alert** – n8n workflow "Attendance · Consecutive Absence Alert" runs daily 5:30 PM IST and alerts parents + class teacher after 3 school days absent in a row.
+- **Account** – change password, profile, school name/address; forgot password with a WhatsApp OTP; admin can reset teacher passwords.
+
+### Extra setting
+Set `PUBLIC_APP_URL` in `.env` (e.g. `https://sa.nihalbabu.in`) so report-card PDF links can be fetched by WhatsApp. Report-card PDFs support Latin names only (other scripts show as `?` in the PDF; the print page supports all).

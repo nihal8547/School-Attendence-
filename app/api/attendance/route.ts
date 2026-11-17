@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { q } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { callN8n, todayIST } from '@/lib/n8n';
+import { holidayOn } from '@/lib/holidays';
+import { ensureSchema } from '@/lib/academic';
 
 export async function POST(req: Request) {
   const s = await getSession();
@@ -18,6 +20,10 @@ export async function POST(req: Request) {
   const today = todayIST();
   const minDate = new Date(Date.parse(today) - 2 * 86400000).toISOString().slice(0, 10);
   if (date > today || date < minDate) return NextResponse.json({ ok: false, error: 'Date must be within the last 2 days' }, { status: 400 });
+
+  await ensureSchema();
+  const holiday = await holidayOn(date);
+  if (holiday) return NextResponse.json({ ok: false, error: `${date} is a holiday (${holiday}). Attendance cannot be marked.` }, { status: 400 });
 
   const own = await q(`SELECT id FROM att.classes WHERE id = $1 AND teacher_id = $2`, [classId, s.uid]);
   if (!own.length) return NextResponse.json({ ok: false, error: 'Not your class' }, { status: 403 });
