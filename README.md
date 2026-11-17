@@ -56,3 +56,6 @@ Stop the local copy (`docker compose down`) so nobody marks attendance in the wr
 
 ### Extra setting
 Set `PUBLIC_APP_URL` in `.env` (e.g. `https://sa.nihalbabu.in`) so report-card PDF links can be fetched by WhatsApp. Report-card PDFs support Latin names only (other scripts show as `?` in the PDF; the print page supports all).
+
+### Sending queue (many teachers at once)
+Submitting attendance saves the marks **and** queues every parent message in one DB transaction, so a busy/down n8n never loses anything. n8n sends each teacher's messages one by one (5–12 s gap + typing delay) from that teacher's own WhatsApp; different teachers send in parallel. Messages are claimed with `FOR UPDATE SKIP LOCKED` (no duplicates), and the "Queue Sweeper" workflow (every 2 min) restarts anything stuck or failed (max 3 tries).

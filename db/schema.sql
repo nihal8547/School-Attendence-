@@ -194,3 +194,8 @@ CREATE TABLE IF NOT EXISTS att.password_resets (
   expires_at TIMESTAMPTZ NOT NULL,
   attempts   INT NOT NULL DEFAULT 0
 );
+
+-- Safe sending queue: a message being sent is 'sending' (claimed by one n8n run); stale claims are recovered by the sweeper.
+ALTER TABLE att.message_log ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ;
+ALTER TABLE att.message_log DROP CONSTRAINT IF EXISTS message_log_status_check;
+ALTER TABLE att.message_log ADD CONSTRAINT message_log_status_check CHECK (status IN ('queued','sending','sent','failed'));

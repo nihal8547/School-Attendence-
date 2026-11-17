@@ -14,7 +14,7 @@ export default async function LogsPage({
   const [stats] = await q(
     `SELECT COUNT(*) FILTER (WHERE status='sent') AS sent,
             COUNT(*) FILTER (WHERE status='failed') AS failed,
-            COUNT(*) FILTER (WHERE status='queued') AS queued
+            COUNT(*) FILTER (WHERE status IN ('queued','sending')) AS queued
      FROM att.message_log WHERE created_at > now() - interval '7 days'`
   );
   const rows = await q(

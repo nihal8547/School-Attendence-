@@ -1,4 +1,4 @@
-export async function callN8n(path: string, body: object) {
+export async function callN8n(path: string, body: object, timeoutMs = 8000) {
   const base = process.env.N8N_BASE_URL || 'https://n8n.webbea.qa';
   try {
     const res = await fetch(`${base}/webhook/${path}`, {
@@ -6,6 +6,7 @@ export async function callN8n(path: string, body: object) {
       headers: { 'content-type': 'application/json', 'x-api-secret': process.env.N8N_WEBHOOK_SECRET || '' },
       body: JSON.stringify(body),
       cache: 'no-store',
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const text = await res.text();
     let data: any = {};

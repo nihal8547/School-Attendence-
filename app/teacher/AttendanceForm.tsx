@@ -67,9 +67,9 @@ export default function AttendanceForm({
       } else {
         setResult({
           ok: true,
-          text: j.notify_started
-            ? 'Attendance saved! WhatsApp messages are being delivered to parents.'
-            : 'Attendance saved, but WhatsApp notifications could not be dispatched immediately.',
+          text: j.queued
+            ? `Attendance saved! ${j.queued} WhatsApp message${j.queued > 1 ? 's are' : ' is'} queued and will go out one by one (about ${j.eta_minutes} min).`
+            : 'Attendance saved!',
         });
       }
     } catch {

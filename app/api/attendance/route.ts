@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { q } from '@/lib/db';
+import { q, tx } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { callN8n, todayIST } from '@/lib/n8n';
 import { holidayOn } from '@/lib/holidays';
@@ -37,26 +37,39 @@ export async function POST(req: Request) {
   const ids = [...wanted.keys()];
   const statuses = ids.map((id) => wanted.get(id)!);
 
-  // A changed status must be re-sent as a correction: drop the old message rows first.
-  await q(
-    `DELETE FROM att.message_log ml USING att.attendance a
-     JOIN unnest($1::int[], $2::text[]) AS x(id, st) ON x.id = a.student_id
-     WHERE ml.attendance_id = a.id AND a.att_date = $3::date AND a.session = $4 AND a.status <> x.st`,
-    [ids, statuses, date, session]
-  );
-  await q(
-    `INSERT INTO att.attendance (student_id, att_date, session, status, marked_by)
-     SELECT x.id, $3::date, $4, x.st, $5 FROM unnest($1::int[], $2::text[]) AS x(id, st)
-     ON CONFLICT (student_id, att_date, session)
-     DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, marked_at = now()`,
-    [ids, statuses, date, session, s.uid]
-  );
-  await q(
-    `INSERT INTO att.session_marks (class_id, att_date, session, marked_by) VALUES ($1,$2::date,$3,$4)
-     ON CONFLICT (class_id, att_date, session) DO UPDATE SET marked_by = EXCLUDED.marked_by, marked_at = now()`,
-    [classId, date, session, s.uid]
-  );
+  // Everything is saved in ONE transaction, including the WhatsApp queue (att.message_log).
+  // So even if n8n is busy or down, nothing is lost: the queue sweeper will pick the messages up.
+  const queued = await tx(async (run) => {
+    // A changed status must be re-sent as a correction: drop the old message rows first.
+    await run(
+      `DELETE FROM att.message_log ml USING att.attendance a
+       JOIN unnest($1::int[], $2::text[]) AS x(id, st) ON x.id = a.student_id
+       WHERE ml.attendance_id = a.id AND a.att_date = $3::date AND a.session = $4 AND a.status <> x.st`,
+      [ids, statuses, date, session]
+    );
+    await run(
+      `INSERT INTO att.attendance (student_id, att_date, session, status, marked_by)
+       SELECT x.id, $3::date, $4, x.st, $5 FROM unnest($1::int[], $2::text[]) AS x(id, st)
+       ON CONFLICT (student_id, att_date, session)
+       DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, marked_at = now()`,
+      [ids, statuses, date, session, s.uid]
+    );
+    await run(
+      `INSERT INTO att.session_marks (class_id, att_date, session, marked_by) VALUES ($1,$2::date,$3,$4)
+       ON CONFLICT (class_id, att_date, session) DO UPDATE SET marked_by = EXCLUDED.marked_by, marked_at = now()`,
+      [classId, date, session, s.uid]
+    );
+    const r = await run(
+      `INSERT INTO att.message_log (attendance_id, guardian_id)
+       SELECT a.id, g.id FROM att.attendance a
+       JOIN att.guardians g ON g.student_id = a.student_id AND g.opt_in
+       WHERE a.student_id = ANY($1::int[]) AND a.att_date = $2::date AND a.session = $3
+       ON CONFLICT (attendance_id, guardian_id) DO NOTHING`,
+      [ids, date, session]
+    );
+    return r.rowCount;
+  });
 
   const n8n = await callN8n('attendance-submitted', { class_id: classId, att_date: date, session });
-  return NextResponse.json({ ok: true, saved: ids.length, notify_started: n8n.ok });
+  return NextResponse.json({ ok: true, saved: ids.length, queued, eta_minutes: Math.max(1, Math.ceil((queued * 9) / 60)), notify_started: n8n.ok });
 }
