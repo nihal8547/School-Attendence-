@@ -10,9 +10,10 @@ export const dynamic = 'force-dynamic';
 const initials = (n: string) =>
   n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
 
-export default async function AdminHome({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
+export default async function AdminHome({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string; tab?: string }> }) {
   await requireRole('admin');
-  const { ok, err } = await searchParams;
+  const { ok, err, tab: tabParam } = await searchParams;
+  const tab = tabParam === 'classes' ? 'classes' : 'teachers';
   const teachers = await q<{ id: number; name: string; email: string; phone: string | null; wa_status: string }>(
     `SELECT id, name, email, phone, wa_status FROM att.users WHERE role='teacher' ORDER BY name`
   );
@@ -37,6 +38,11 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       {ok && <div className="msg">✓ {ok}</div>}
       {err && <div className="msg err">✕ {err}</div>}
 
+      <nav className="tabs" aria-label="Teachers and classes">
+        <Link href="/admin?tab=teachers" className={`tab ${tab === 'teachers' ? 'active' : ''}`}>👩‍🏫 Teachers <span className="count">{teachers.length}</span></Link>
+        <Link href="/admin?tab=classes" className={`tab ${tab === 'classes' ? 'active' : ''}`}>🏫 Classes <span className="count">{classes.length}</span></Link>
+      </nav>
+
       <div className="stat-grid">
         <div className="stat-box"><div className="n">{teachers.length}</div><div className="l">Teachers</div></div>
         <div className="stat-box"><div className="n">{classes.length}</div><div className="l">Classes</div></div>
@@ -47,7 +53,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
-      {/* ---------- Teachers ---------- */}
+      {tab === 'teachers' && (
       <section className="section">
         <div className="section-head">
           <h2>Teachers <span className="count">{teachers.length}</span></h2>
@@ -98,8 +104,9 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           {!teachers.length && <div className="empty">No teachers yet. Add your first teacher above.</div>}
         </div>
       </section>
+      )}
 
-      {/* ---------- Classes ---------- */}
+      {tab === 'classes' && (
       <section className="section">
         <div className="section-head">
           <h2>Classes <span className="count">{classes.length}</span></h2>
@@ -145,6 +152,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           {!classes.length && <div className="empty">No classes yet. Create your first class above.</div>}
         </div>
       </section>
+      )}
     </>
   );
 }

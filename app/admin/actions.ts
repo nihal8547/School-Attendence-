@@ -17,30 +17,30 @@ export async function createTeacher(formData: FormData) {
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
   const phone = normalizeIndianPhone(String(formData.get('phone') || ''));
-  if (!name || !email || password.length < 8) back('/admin', 'Name, email and an 8+ character password are required', true);
-  if (!phone) back('/admin', 'Enter a valid Indian mobile number for the teacher', true);
+  if (!name || !email || password.length < 8) back('/admin?tab=teachers', 'Name, email and an 8+ character password are required', true);
+  if (!phone) back('/admin?tab=teachers', 'Enter a valid Indian mobile number for the teacher', true);
   const hash = await bcrypt.hash(password, 10);
   try {
     await q(`INSERT INTO att.users (name, email, phone, password_hash, role) VALUES ($1,$2,$3,$4,'teacher')`, [name, email, phone, hash]);
   } catch {
-    back('/admin', 'That email is already used', true);
+    back('/admin?tab=teachers', 'That email is already used', true);
   }
   revalidatePath('/admin');
-  back('/admin', `Teacher ${name} added`);
+  back('/admin?tab=teachers', `Teacher ${name} added`);
 }
 
 export async function createClass(formData: FormData) {
   await requireRole('admin');
   const name = String(formData.get('name') || '').trim();
   const teacherId = Number(formData.get('teacher_id')) || null;
-  if (!name) back('/admin', 'Class name is required', true);
+  if (!name) back('/admin?tab=classes', 'Class name is required', true);
   try {
     await q(`INSERT INTO att.classes (name, teacher_id) VALUES ($1,$2)`, [name, teacherId]);
   } catch {
-    back('/admin', 'A class with that name already exists', true);
+    back('/admin?tab=classes', 'A class with that name already exists', true);
   }
   revalidatePath('/admin');
-  back('/admin', `Class ${name} added`);
+  back('/admin?tab=classes', `Class ${name} added`);
 }
 
 export async function assignTeacher(formData: FormData) {
@@ -49,7 +49,7 @@ export async function assignTeacher(formData: FormData) {
   const teacherId = Number(formData.get('teacher_id')) || null;
   await q(`UPDATE att.classes SET teacher_id = $2 WHERE id = $1`, [classId, teacherId]);
   revalidatePath('/admin');
-  back('/admin', 'Class teacher updated');
+  back('/admin?tab=classes', 'Class teacher updated');
 }
 
 export async function addStudent(formData: FormData) {
