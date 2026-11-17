@@ -23,7 +23,7 @@ export async function login(formData: FormData) {
   }
   const j = await res.json().catch(() => ({}));
   if (res.status === 429) redirect('/login?error=locked');
-  if (res.status === 403 && j.error === 'suspended') redirect('/login?error=suspended');
+  if (res.status === 403 && (j.error === 'suspended' || j.error === 'disabled')) redirect('/login?error=suspended');
   if (!res.ok || !j.token) redirect('/login?error=1');
   await setSessionToken(j.token);
   redirect(j.home || '/');

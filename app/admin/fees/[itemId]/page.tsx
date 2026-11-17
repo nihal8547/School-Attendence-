@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/session';
 import { recordPayment, sendFeeReminders, setConcession } from '@/lib/fee-actions';
 import { fmtDate, fmtMoney } from '@/lib/format';
 import ConfirmButton from '@/components/ConfirmButton';
+import { updateFeeItem } from '@/lib/edit-actions';
 import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,18 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       </div>
       {sp.ok && <div className="msg"><Icon n="check" /> {sp.ok}</div>}
       {sp.err && <div className="msg err"><Icon n="x" /> {sp.err}</div>}
+
+      <details className="card">
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}><Icon n="note" /> Edit fee</summary>
+        <form action={updateFeeItem} className="row" style={{ marginTop: 12 }}>
+          <input type="hidden" name="id" value={id} />
+          <label>Fee name<input name="name" defaultValue={item.name} required maxLength={80} /></label>
+          <label>Amount per student<input name="amount" type="number" step="0.01" min="1" defaultValue={Number(item.amount)} required /></label>
+          <label>Due date<input name="due_date" type="date" defaultValue={item.due_date ? String(item.due_date).slice(0, 10) : ''} /></label>
+          <button type="submit">Save</button>
+        </form>
+        <p className="muted" style={{ marginBottom: 0, fontSize: 13 }}>Amount cannot be changed once payments are recorded.</p>
+      </details>
 
       <div className="stat-grid">
         <div className="stat-box"><div className="n">{fmtMoney(billed)}</div><div className="l">Billed</div></div>

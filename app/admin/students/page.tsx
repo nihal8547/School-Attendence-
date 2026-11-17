@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/session';
 import { addStudent, importStudents, removeStudent } from '../actions';
 import Icon from '@/components/Icon';
 import ImportUpload from '@/components/ImportUpload';
+import { updateStudent } from '@/lib/edit-actions';
 
 export default async function StudentsPage({
   searchParams,
@@ -123,7 +124,25 @@ export default async function StudentsPage({
                     <span className="student-roll">#{s.roll_no}</span>
                   </td>
                   <td style={{ fontWeight: 600 }}>{s.name}</td>
-                  <td>{s.guardians || <span className="muted">— None —</span>}</td>
+                  <td>{s.guardians || <span className="muted">— None —</span>}
+                    <details className="tile-more" style={{ marginTop: 6 }}>
+                      <summary><Icon n="note" /> Edit</summary>
+                      <form action={updateStudent} className="stack" style={{ marginTop: 8 }}>
+                        <input type="hidden" name="student_id" value={s.id} />
+                        <input type="hidden" name="class_id" value={classId} />
+                        <label>Roll No<input name="roll_no" type="number" min={0} defaultValue={s.roll_no} required /></label>
+                        <label>Student name<input name="name" defaultValue={s.name} required /></label>
+                        <label>Parent name<input name="guardian_name" defaultValue={s.guardian_name ?? ''} /></label>
+                        <label>Parent WhatsApp<input name="phone" defaultValue={s.guardian_phone ?? ''} required /></label>
+                        <label>Class
+                          <select name="new_class_id" defaultValue={classId}>
+                            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        </label>
+                        <button type="submit" style={{ alignSelf: 'flex-start' }}>Save changes</button>
+                      </form>
+                    </details>
+                  </td>
                   <td style={{ textAlign: 'right' }}>
                     <form action={removeStudent} style={{ display: 'inline-block' }}>
                       <input type="hidden" name="student_id" value={s.id} />

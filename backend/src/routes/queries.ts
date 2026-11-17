@@ -88,7 +88,7 @@ export const queries: Record<string, QueryDef> = {
   'admin-home': {
     roles: ['admin'],
     fn: async (s) => ({
-      teachers: await q(`SELECT id, name, email, phone, wa_status FROM att.users WHERE role='teacher' AND school_id = $1 ORDER BY name`, [s.sid]),
+      teachers: await q(`SELECT id, name, email, phone, wa_status, active FROM att.users WHERE role='teacher' AND school_id = $1 ORDER BY name`, [s.sid]),
       classes: await q(
         `SELECT c.id, c.name, c.teacher_id, u.name AS teacher_name,
                 (SELECT COUNT(*) FROM att.students st WHERE st.class_id = c.id AND st.active) AS students
@@ -107,7 +107,8 @@ export const queries: Record<string, QueryDef> = {
       const [t] = classId ? await q<{ n: string }>(`SELECT COUNT(*) AS n FROM att.students WHERE class_id = $1 AND active`, [classId]) : [{ n: '0' }];
       const students = classId
         ? await q(
-            `SELECT s.id, s.roll_no, s.name, COALESCE(string_agg(g.name || ' (' || g.phone || ')', ', '), '') AS guardians
+            `SELECT s.id, s.roll_no, s.name, COALESCE(string_agg(g.name || ' (' || g.phone || ')', ', '), '') AS guardians,
+                    (array_agg(g.name ORDER BY g.is_primary DESC, g.id))[1] AS guardian_name, (array_agg(g.phone ORDER BY g.is_primary DESC, g.id))[1] AS guardian_phone
              FROM att.students s LEFT JOIN att.guardians g ON g.student_id = s.id
              WHERE s.class_id = $1 AND s.active GROUP BY s.id ORDER BY s.roll_no, s.name LIMIT $2 OFFSET $3`,
             [classId, size, offset]
@@ -402,7 +403,7 @@ export const queries: Record<string, QueryDef> = {
     fn: async (s, p) => {
       const examId = Number(p.id);
       const [exam] = await q(
-        `SELECT e.id, e.name, e.class_id, c.name AS class_name, c.teacher_id, to_char(e.exam_date, 'DD Mon YYYY') AS date_label
+        `SELECT e.id, e.name, e.class_id, c.name AS class_name, c.teacher_id, to_char(e.exam_date, 'DD Mon YYYY') AS date_label, to_char(e.exam_date, 'YYYY-MM-DD') AS date_iso
          FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1 AND c.school_id = $2`,
         [examId, s.sid]
       );

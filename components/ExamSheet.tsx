@@ -4,6 +4,7 @@ import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { subjectGrade } from '@/lib/grade';
 import { saveMarks, deleteExam, sendMarksheet } from '@/lib/academic-actions';
+import { updateExam } from '@/lib/edit-actions';
 import { sendReportCards } from '@/lib/reportcard-actions';
 import PrintButton from './PrintButton';
 import ConfirmButton from './ConfirmButton';
@@ -174,6 +175,16 @@ export default async function ExamSheet({
           </div>
         </div>
       </div>}
+
+      <details className="card no-print">
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}><Icon n="note" /> Edit exam</summary>
+        <form action={updateExam} className="row" style={{ marginTop: 12 }}>
+          <input type="hidden" name="exam_id" value={examId} />
+          <label>Exam name<input name="name" defaultValue={exam.name} required maxLength={80} /></label>
+          <label>Date<input name="exam_date" type="date" defaultValue={exam.date_iso ?? ''} /></label>
+          <button type="submit">Save</button>
+        </form>
+      </details>
 
       <form action={deleteExam} className="no-print" style={{ marginTop: 8 }}>
         <input type="hidden" name="exam_id" value={examId} />

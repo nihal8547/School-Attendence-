@@ -23,7 +23,7 @@ import { csvCell, fmtDate } from './lib/format.js';
 import { startScheduler } from './scheduler.js';
 import { readUpload, importStudentRows, summarize, TEMPLATE_HEAD, TEMPLATE_SAMPLE } from './lib/importer.js';
 import { allowClass } from './lib/access.js';
-import { clearCache } from './cache.js';
+import { clearCache, cached } from './cache.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -57,7 +57,13 @@ app.addHook('onRequest', (req, _reply, done) => {
   req.clientIp = String(req.headers['x-client-ip'] || req.ip || '').split(',')[0].trim();
   const h = String(req.headers.authorization || '');
   const token = h.startsWith('Bearer ') ? h.slice(7) : '';
-  (token ? verifySession(token) : Promise.resolve(null)).then((session) => {
+  (token ? verifySession(token) : Promise.resolve(null)).then(async (session) => {
+    // a disabled teacher loses access within 30 seconds, even with a valid token
+    if (session && session.role === 'teacher') {
+      const uid = session.uid;
+      const on = await cached(`u-active:${uid}`, 30_000, async () => (await q(`SELECT active FROM att.users WHERE id = $1`, [uid]))[0]?.active !== false).catch(() => true);
+      if (!on) session = null;
+    }
     req.session = session;
     als.run({ session, reqId: req.id }, done);
   });
@@ -103,7 +109,7 @@ app.post('/v1/auth/login', { config: { rateLimit: { max: 15, timeWindow: '1 minu
   const f = failures.get(key);
   if (f && f.until > Date.now() && f.n >= 8) return reply.code(429).send({ ok: false, error: 'locked' });
   const [u] = await q(
-    `SELECT u.id, u.name, u.role, u.password_hash, u.school_id, s.active AS school_active FROM att.users u LEFT JOIN att.schools s ON s.id = u.school_id WHERE u.email = $1`,
+    `SELECT u.id, u.name, u.role, u.password_hash, u.school_id, u.active AS user_active, s.active AS school_active FROM att.users u LEFT JOIN att.schools s ON s.id = u.school_id WHERE u.email = $1`,
     [email]
   );
   const good = u ? await bcrypt.compare(password, u.password_hash) : await bcrypt.compare(password, '$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidi');
@@ -113,6 +119,7 @@ app.post('/v1/auth/login', { config: { rateLimit: { max: 15, timeWindow: '1 minu
     return reply.code(401).send({ ok: false, error: 'invalid' });
   }
   failures.delete(key);
+  if (u.user_active === false) return reply.code(403).send({ ok: false, error: 'disabled' });
   if (u.role !== 'superadmin' && u.school_active === false) return reply.code(403).send({ ok: false, error: 'suspended' });
   const session: Session = { uid: u.id, role: u.role, name: u.name, sid: u.school_id ?? 0 };
   q(`INSERT INTO att.audit_log (user_id, school_id, action, ip) VALUES ($1,$2,'login',$3)`, [u.id, u.school_id, req.clientIp]).catch(() => {});

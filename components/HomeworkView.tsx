@@ -1,5 +1,6 @@
 import { getData } from '@/lib/api';
 import { addHomework, deleteHomework } from '@/lib/academic2-actions';
+import { updateHomework } from '@/lib/edit-actions';
 import { fmtDate } from '@/lib/format';
 import { moduleRole, ModuleHead, type ModProps } from './ModuleShell';
 
@@ -40,6 +41,17 @@ export default async function HomeworkView({ role, searchParams }: ModProps) {
                   {h.due && <span className={`badge ${h.due < today ? 'bad' : 'ok'}`}>Due {fmtDate(h.due)}</span>}
                 </div>
                 {h.details && <div style={{ fontSize: 14, color: '#475569', whiteSpace: 'pre-wrap' }}>{h.details}</div>}
+                <details className="tile-more">
+                  <summary>Edit</summary>
+                  <form action={updateHomework} className="stack" style={{ marginTop: 8 }}>
+                    <input type="hidden" name="id" value={h.id} />
+                    <label>Subject<input name="subject" defaultValue={h.subject} required maxLength={60} /></label>
+                    <label>Title<input name="title" defaultValue={h.title} required maxLength={120} /></label>
+                    <label>Due date<input name="due_date" type="date" defaultValue={h.due ? String(h.due).slice(0, 10) : ''} /></label>
+                    <label>Details<textarea name="details" rows={3} maxLength={1000} defaultValue={h.details} /></label>
+                    <button type="submit" style={{ alignSelf: 'flex-start' }}>Save</button>
+                  </form>
+                </details>
                 <form action={deleteHomework}><input type="hidden" name="id" value={h.id} /><button type="submit" className="danger" style={{ padding: '6px 12px' }}>Remove</button></form>
               </div>
             ))}

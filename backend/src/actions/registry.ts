@@ -9,6 +9,7 @@ import * as holidays from './holidays.js';
 import * as reportcards from './reportcards.js';
 import * as admin from './admin.js';
 import * as forgot from './forgot.js';
+import * as edits from './edits.js';
 import type { FormLike } from '../compat.js';
 
 export type ActionFn = (f: FormLike) => Promise<unknown>;
@@ -21,7 +22,7 @@ function pick(mod: Record<string, unknown>): Record<string, ActionFn> {
 
 export const actions: Record<string, ActionFn> = {
   ...pick(account), ...pick(academic), ...pick(academic2), ...pick(fees), ...pick(groups), ...pick(sup),
-  ...pick(announce), ...pick(holidays), ...pick(reportcards), ...pick(admin), ...pick(forgot),
+  ...pick(announce), ...pick(holidays), ...pick(reportcards), ...pick(admin), ...pick(forgot), ...pick(edits),
 };
 
 /** Actions that work without being signed in (forgot password). */

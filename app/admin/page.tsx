@@ -4,6 +4,8 @@ import { adminResetPassword } from '@/lib/account-actions';
 import { requireRole } from '@/lib/session';
 import { fmtPhone } from '@/lib/format';
 import { createTeacher, createClass, assignTeacher, updateTeacher } from './actions';
+import { setTeacherActive, deleteTeacher, updateClass, deleteClass } from '@/lib/edit-actions';
+import ConfirmButton from '@/components/ConfirmButton';
 import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +18,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const { ok, err, tab: tabParam } = await searchParams;
   const tab = tabParam === 'classes' ? 'classes' : 'teachers';
   const { teachers, classes } = await getData<{
-    teachers: { id: number; name: string; email: string; phone: string | null; wa_status: string }[];
+    teachers: { id: number; name: string; email: string; phone: string | null; wa_status: string; active: boolean }[];
     classes: { id: number; name: string; teacher_id: number | null; teacher_name: string | null; students: string }[];
   }>('admin-home');
   const totalStudents = classes.reduce((a, c) => a + Number(c.students), 0);
@@ -79,7 +81,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                     <div className="tile-title">{t.name}</div>
                     <div className="tile-sub">{t.email}</div>
                   </div>
-                  <span className={`badge ${on ? 'ok' : 'bad'}`}>{on ? 'WhatsApp online' : 'Offline'}</span>
+                  {t.active === false ? <span className="badge bad">Disabled</span> : <span className={`badge ${on ? 'ok' : 'bad'}`}>{on ? 'WhatsApp online' : 'Offline'}</span>}
                 </div>
                 <div className="tile-meta">
                   <span><Icon n="phone" /> {fmtPhone(t.phone)}</span>
@@ -97,6 +99,17 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                     <button type="submit" style={{ alignSelf: 'flex-start' }}>Save changes</button>
                   </form>
                 </details>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <form action={setTeacherActive}>
+                    <input type="hidden" name="user_id" value={t.id} />
+                    <input type="hidden" name="active" value={t.active === false ? '1' : '0'} />
+                    <ConfirmButton className="ghost" style={{ minWidth: 0, padding: '6px 12px' }} message={t.active === false ? `Enable ${t.name}?` : `Disable ${t.name}? They will not be able to sign in.`}>{t.active === false ? 'Enable' : 'Disable'}</ConfirmButton>
+                  </form>
+                  <form action={deleteTeacher}>
+                    <input type="hidden" name="user_id" value={t.id} />
+                    <ConfirmButton className="danger" style={{ minWidth: 0, padding: '6px 12px' }} message={`Delete ${t.name} permanently? This cannot be undone.`}>Delete</ConfirmButton>
+                  </form>
+                </div>
                 <details className="tile-more">
                   <summary><Icon n="key" /> Reset password</summary>
                   <form action={adminResetPassword} style={{ display: 'flex', gap: 8, marginTop: 10 }}>
@@ -153,6 +166,18 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                   {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
                 <button className="ghost" type="submit">Save</button>
+              </form>
+              <details className="tile-more">
+                <summary><Icon n="note" /> Rename class</summary>
+                <form action={updateClass} style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <input type="hidden" name="class_id" value={c.id} />
+                  <input name="name" defaultValue={c.name} required maxLength={60} style={{ flex: 1, minWidth: 0 }} />
+                  <button type="submit" style={{ padding: '8px 14px' }}>Save</button>
+                </form>
+              </details>
+              <form action={deleteClass}>
+                <input type="hidden" name="class_id" value={c.id} />
+                <ConfirmButton className="danger" style={{ minWidth: 0, padding: '6px 12px' }} message={`Delete class ${c.name}? Only empty classes can be deleted.`}>Delete class</ConfirmButton>
               </form>
             </div>
           ))}

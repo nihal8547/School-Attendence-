@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { sendReceipt } from '@/lib/fee-actions';
+import { deletePayment } from '@/lib/edit-actions';
+import ConfirmButton from '@/components/ConfirmButton';
 import { fmtDate, fmtMoney } from '@/lib/format';
 import PrintButton from '@/components/PrintButton';
 import Icon from '@/components/Icon';
@@ -34,6 +36,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           <form action={sendReceipt}>
             <input type="hidden" name="payment_id" value={pid} />
             <button type="submit"><Icon n="send" /> Send to parent on WhatsApp</button>
+          </form>
+          <form action={deletePayment}>
+            <input type="hidden" name="payment_id" value={pid} />
+            <ConfirmButton className="danger" style={{ minWidth: 0 }} message="Delete this payment? The student's balance will go back up.">Delete payment</ConfirmButton>
           </form>
         </div>
       </div>
