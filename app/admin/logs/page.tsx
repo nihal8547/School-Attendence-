@@ -9,13 +9,15 @@ export default async function LogsPage({
 }: {
   searchParams: Promise<{ ok?: string; err?: string }>;
 }) {
-  await requireRole('admin');
+  const s = await requireRole('admin');
   const sp = await searchParams;
   const [stats] = await q(
-    `SELECT COUNT(*) FILTER (WHERE status='sent') AS sent,
-            COUNT(*) FILTER (WHERE status='failed') AS failed,
-            COUNT(*) FILTER (WHERE status IN ('queued','sending')) AS queued
-     FROM att.message_log WHERE created_at > now() - interval '7 days'`
+    `SELECT COUNT(*) FILTER (WHERE ml2.status='sent') AS sent,
+            COUNT(*) FILTER (WHERE ml2.status='failed') AS failed,
+            COUNT(*) FILTER (WHERE ml2.status IN ('queued','sending')) AS queued
+     FROM att.message_log ml2 JOIN att.attendance a2 ON a2.id = ml2.attendance_id JOIN att.students s2 ON s2.id = a2.student_id JOIN att.classes c2 ON c2.id = s2.class_id
+     WHERE ml2.created_at > now() - interval '7 days' AND c2.school_id = $1`,
+    [s.sid]
   );
   const rows = await q(
     `SELECT ml.id, ml.status, ml.error, ml.attempts, ml.sent_at, a.session, to_char(a.att_date,'DD Mon') AS d,
@@ -25,7 +27,9 @@ export default async function LogsPage({
      JOIN att.students s ON s.id = a.student_id
      JOIN att.classes c ON c.id = s.class_id
      JOIN att.guardians g ON g.id = ml.guardian_id
-     ORDER BY ml.id DESC LIMIT 150`
+     WHERE c.school_id = $1
+     ORDER BY ml.id DESC LIMIT 150`,
+    [s.sid]
   );
 
   return (

@@ -199,3 +199,107 @@ CREATE TABLE IF NOT EXISTS att.password_resets (
 ALTER TABLE att.message_log ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ;
 ALTER TABLE att.message_log DROP CONSTRAINT IF EXISTS message_log_status_check;
 ALTER TABLE att.message_log ADD CONSTRAINT message_log_status_check CHECK (status IN ('queued','sending','sent','failed'));
+
+-- ===================== SaaS: schools, super admin, class groups, modules =====================
+CREATE TABLE IF NOT EXISTS att.schools (
+  id         SERIAL PRIMARY KEY,
+  name       TEXT NOT NULL,
+  address    TEXT NOT NULL DEFAULT '',
+  active     BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- Existing single-school data becomes school 1 (keeps the old school name/address).
+INSERT INTO att.schools (id, name, address)
+SELECT 1, COALESCE((SELECT value FROM att.settings WHERE key = 'school_name'), 'School'),
+          COALESCE((SELECT value FROM att.settings WHERE key = 'school_address'), '')
+WHERE NOT EXISTS (SELECT 1 FROM att.schools);
+SELECT setval(pg_get_serial_sequence('att.schools', 'id'), GREATEST(1, (SELECT MAX(id) FROM att.schools)));
+
+ALTER TABLE att.users ADD COLUMN IF NOT EXISTS school_id INT REFERENCES att.schools(id) ON DELETE CASCADE;
+UPDATE att.users SET school_id = 1 WHERE school_id IS NULL AND role IN ('admin', 'teacher');
+ALTER TABLE att.users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE att.users ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'teacher', 'superadmin'));
+
+CREATE TABLE IF NOT EXISTS att.class_groups (
+  id        SERIAL PRIMARY KEY,
+  school_id INT NOT NULL REFERENCES att.schools(id) ON DELETE CASCADE,
+  name      TEXT NOT NULL,
+  grading   TEXT NOT NULL DEFAULT 'marks' CHECK (grading IN ('marks', 'grades')),
+  show_rank BOOLEAN NOT NULL DEFAULT TRUE,
+  UNIQUE (school_id, name)
+);
+-- A module with no row is ON. Rows only record explicit on/off choices.
+CREATE TABLE IF NOT EXISTS att.school_modules (
+  school_id  INT NOT NULL REFERENCES att.schools(id) ON DELETE CASCADE,
+  module_key TEXT NOT NULL,
+  enabled    BOOLEAN NOT NULL,
+  PRIMARY KEY (school_id, module_key)
+);
+CREATE TABLE IF NOT EXISTS att.class_group_modules (
+  group_id   INT NOT NULL REFERENCES att.class_groups(id) ON DELETE CASCADE,
+  module_key TEXT NOT NULL,
+  enabled    BOOLEAN NOT NULL,
+  PRIMARY KEY (group_id, module_key)
+);
+
+ALTER TABLE att.classes ADD COLUMN IF NOT EXISTS school_id INT REFERENCES att.schools(id) ON DELETE CASCADE;
+ALTER TABLE att.classes ADD COLUMN IF NOT EXISTS group_id  INT REFERENCES att.class_groups(id) ON DELETE SET NULL;
+UPDATE att.classes SET school_id = 1 WHERE school_id IS NULL;
+ALTER TABLE att.classes DROP CONSTRAINT IF EXISTS classes_name_key;
+CREATE UNIQUE INDEX IF NOT EXISTS classes_school_name_uq ON att.classes (school_id, name);
+
+ALTER TABLE att.holidays ADD COLUMN IF NOT EXISTS school_id INT REFERENCES att.schools(id) ON DELETE CASCADE;
+UPDATE att.holidays SET school_id = 1 WHERE school_id IS NULL;
+ALTER TABLE att.holidays DROP CONSTRAINT IF EXISTS holidays_holiday_date_key;
+CREATE UNIQUE INDEX IF NOT EXISTS holidays_school_date_uq ON att.holidays (school_id, holiday_date);
+
+ALTER TABLE att.announcements ADD COLUMN IF NOT EXISTS school_id INT REFERENCES att.schools(id) ON DELETE CASCADE;
+UPDATE att.announcements SET school_id = 1 WHERE school_id IS NULL;
+
+-- ===================== Academic modules =====================
+CREATE TABLE IF NOT EXISTS att.homework (
+  id         SERIAL PRIMARY KEY,
+  class_id   INT NOT NULL REFERENCES att.classes(id) ON DELETE CASCADE,
+  subject    TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  details    TEXT NOT NULL DEFAULT '',
+  due_date   DATE,
+  created_by INT REFERENCES att.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS homework_class_idx ON att.homework (class_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS att.syllabus_topics (
+  id           SERIAL PRIMARY KEY,
+  class_id     INT NOT NULL REFERENCES att.classes(id) ON DELETE CASCADE,
+  subject      TEXT NOT NULL,
+  chapter      TEXT NOT NULL,
+  position     INT NOT NULL DEFAULT 0,
+  status       TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'done')),
+  completed_on DATE
+);
+CREATE INDEX IF NOT EXISTS syllabus_class_idx ON att.syllabus_topics (class_id, subject, position);
+
+CREATE TABLE IF NOT EXISTS att.leave_requests (
+  id         SERIAL PRIMARY KEY,
+  student_id INT NOT NULL REFERENCES att.students(id) ON DELETE CASCADE,
+  from_date  DATE NOT NULL,
+  to_date    DATE NOT NULL,
+  reason     TEXT NOT NULL DEFAULT '',
+  status     TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_by INT REFERENCES att.users(id) ON DELETE SET NULL,
+  decided_by INT REFERENCES att.users(id) ON DELETE SET NULL,
+  decided_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS leave_student_idx ON att.leave_requests (student_id, from_date);
+
+CREATE TABLE IF NOT EXISTS att.student_remarks (
+  id         SERIAL PRIMARY KEY,
+  student_id INT NOT NULL REFERENCES att.students(id) ON DELETE CASCADE,
+  kind       TEXT NOT NULL DEFAULT 'general' CHECK (kind IN ('achievement', 'behavior', 'general')),
+  note       TEXT NOT NULL,
+  created_by INT REFERENCES att.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS remarks_student_idx ON att.student_remarks (student_id, created_at DESC);

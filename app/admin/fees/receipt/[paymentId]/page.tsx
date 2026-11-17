@@ -11,7 +11,7 @@ import PrintButton from '@/components/PrintButton';
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ params, searchParams }: { params: Promise<{ paymentId: string }>; searchParams: Promise<{ ok?: string; err?: string }> }) {
-  await requireRole('admin');
+  const s = await requireRole('admin');
   await ensureSchema();
   const { paymentId } = await params;
   const sp = await searchParams;
@@ -21,11 +21,11 @@ export default async function Page({ params, searchParams }: { params: Promise<{
             (d.amount - d.concession - COALESCE((SELECT SUM(amount) FROM att.fee_payments WHERE due_id = d.id), 0)) AS balance
      FROM att.fee_payments p JOIN att.fee_dues d ON d.id = p.due_id
      JOIN att.fee_items fi ON fi.id = d.fee_item_id JOIN att.students s ON s.id = d.student_id JOIN att.classes c ON c.id = fi.class_id
-     WHERE p.id = $1`,
-    [pid]
+     WHERE p.id = $1 AND c.school_id = $2`,
+    [pid, s.sid]
   );
   if (!r) notFound();
-  const school = await getSchool();
+  const school = await getSchool(s.sid);
   const row = (k: string, v: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px dashed #d1d5db' }}>
       <span style={{ color: '#6b7280' }}>{k}</span><strong>{v}</strong>

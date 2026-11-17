@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { q } from '@/lib/db';
 import { grade } from '@/lib/academic';
 import { getSchool } from '@/lib/settings';
+import { classPolicy } from '@/lib/modules';
 
 export type Card = {
   school: { name: string; address: string };
@@ -16,16 +17,25 @@ export type Card = {
   classSize: number;
   complete: boolean;
   attendance: number | null;
+  /** 'grades' (e.g. primary): show grades instead of marks, no marks total/percentage. */
+  scheme: 'marks' | 'grades';
+  showRank: boolean;
 };
 
+/** Grade of one subject mark, used where only grades are shown. */
+export function subjectGrade(got: number | null, max: number): string {
+  return got === null || !max ? '-' : grade((got / max) * 100);
+}
+
 export async function loadCards(examId: number, studentId?: number): Promise<Card[]> {
-  const [exam] = await q<{ id: number; name: string; class_id: number; class_name: string; date: string | null }>(
-    `SELECT e.id, e.name, e.class_id, c.name AS class_name, to_char(e.exam_date, 'DD Mon YYYY') AS date
+  const [exam] = await q<{ id: number; name: string; class_id: number; class_name: string; date: string | null; school_id: number }>(
+    `SELECT e.id, e.name, e.class_id, c.name AS class_name, c.school_id, to_char(e.exam_date, 'DD Mon YYYY') AS date
      FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1`,
     [examId]
   );
   if (!exam) return [];
-  const school = await getSchool();
+  const school = await getSchool(exam.school_id);
+  const policy = await classPolicy(exam.class_id);
   const subs = await q<{ subject: string; max_marks: number }>(`SELECT subject, max_marks FROM att.exam_subjects WHERE exam_id = $1 ORDER BY position`, [examId]);
   const students = await q<{ id: number; roll_no: number; name: string }>(
     `SELECT id, roll_no, name FROM att.students WHERE class_id = $1 AND active ORDER BY roll_no, name`,
@@ -64,10 +74,12 @@ export async function loadCards(examId: number, studentId?: number): Promise<Car
         maxTotal,
         pct,
         grade: grade(pct),
-        rank: r.complete ? rankOf.get(r.st.id) ?? null : null,
+        rank: r.complete && policy.showRank ? rankOf.get(r.st.id) ?? null : null,
         classSize: ranked.length,
         complete: r.complete,
         attendance: attMap.get(r.st.id) ?? null,
+        scheme: policy.grading,
+        showRank: policy.showRank,
       };
     });
 }
@@ -105,27 +117,35 @@ export async function buildPdf(cards: Card[]): Promise<Uint8Array> {
     text('Class', 330, 640, 9, font, grey); text(c.exam.className, 330, 624, 13, bold);
     text('Roll No.', 470, 640, 9, font, grey); text(String(c.student.roll_no), 470, 624, 13, bold);
 
-    // Marks table
+    const grades = c.scheme === 'grades';
+    // Subject table
     let y = 580;
     page.drawRectangle({ x: 50, y: y - 6, width: W - 100, height: 24, color: rgb(0.93, 0.95, 1) });
     text('Subject', 60, y, 10.5, bold);
-    right('Max marks', 380, y, 10.5, bold);
-    right('Marks obtained', 500, y, 10.5, bold);
+    if (!grades) right('Max marks', 380, y, 10.5, bold);
+    right(grades ? 'Grade' : 'Marks obtained', 500, y, 10.5, bold);
     y -= 26;
     for (const s of c.subjects) {
       text(s.subject.slice(0, 40), 60, y, 11);
-      right(String(s.max), 380, y);
-      const fail = s.got !== null && s.got < s.max * 0.35;
-      if (fail) page.drawText(clean(s.got === null ? '-' : String(s.got)), { x: 500 - bold.widthOfTextAtSize(String(s.got), 11), y, size: 11, font: bold, color: rgb(0.8, 0.1, 0.1) });
-      else right(s.got === null ? '-' : String(s.got), 500, y);
+      if (grades) {
+        right(subjectGrade(s.got, s.max), 500, y, 11, bold);
+      } else {
+        right(String(s.max), 380, y);
+        const fail = s.got !== null && s.got < s.max * 0.35;
+        const shown = s.got === null ? '-' : String(s.got);
+        if (fail) page.drawText(clean(shown), { x: 500 - bold.widthOfTextAtSize(shown, 11), y, size: 11, font: bold, color: rgb(0.8, 0.1, 0.1) });
+        else right(shown, 500, y);
+      }
       page.drawLine({ start: { x: 50, y: y - 8 }, end: { x: W - 50, y: y - 8 }, thickness: 0.5, color: line });
       y -= 26;
       if (y < 330) break;
     }
-    page.drawRectangle({ x: 50, y: y - 6, width: W - 100, height: 24, color: rgb(0.93, 0.95, 1) });
-    text('Total', 60, y, 11.5, bold);
-    right(String(c.maxTotal), 380, y, 11.5, bold);
-    right(c.complete ? String(c.total) : '-', 500, y, 11.5, bold);
+    if (!grades) {
+      page.drawRectangle({ x: 50, y: y - 6, width: W - 100, height: 24, color: rgb(0.93, 0.95, 1) });
+      text('Total', 60, y, 11.5, bold);
+      right(String(c.maxTotal), 380, y, 11.5, bold);
+      right(c.complete ? String(c.total) : '-', 500, y, 11.5, bold);
+    }
 
     // Summary boxes
     y -= 70;
@@ -136,10 +156,12 @@ export async function buildPdf(cards: Card[]): Promise<Uint8Array> {
       const lw = font.widthOfTextAtSize(label, 9);
       text(label, x + (112 - lw) / 2, y + 4, 9, font, grey);
     };
-    box(50, 'Percentage', c.complete ? `${c.pct.toFixed(1)}%` : '-');
-    box(172, 'Grade', c.complete ? c.grade : '-');
-    box(294, 'Class rank', c.rank ? `${c.rank} / ${c.classSize}` : '-');
-    box(416, 'Attendance', c.attendance === null ? '-' : `${c.attendance.toFixed(0)}%`);
+    const boxes: [string, string][] = [];
+    if (!grades) boxes.push(['Percentage', c.complete ? `${c.pct.toFixed(1)}%` : '-']);
+    boxes.push([grades ? 'Overall grade' : 'Grade', c.complete ? c.grade : '-']);
+    if (c.showRank) boxes.push(['Class rank', c.rank ? `${c.rank} / ${c.classSize}` : '-']);
+    boxes.push(['Attendance', c.attendance === null ? '-' : `${c.attendance.toFixed(0)}%`]);
+    boxes.forEach(([label, value], i) => box(50 + i * 122, label, value));
 
     if (!c.complete) text('Some subject marks are not yet entered.', 55, y - 36, 9.5, font, rgb(0.8, 0.1, 0.1));
     text('Grading: A+ 90+  A 80+  B+ 70+  B 60+  C 50+  D 35+  E below 35', 55, y - 56, 8.5, font, grey);

@@ -7,7 +7,7 @@ import { ensureSchema } from '@/lib/academic';
 import { getSession } from '@/lib/session';
 import { mustAdmin, baseFor, backTo } from '@/lib/access';
 import { normalizeIndianPhone } from '@/lib/phone';
-import { setSetting } from '@/lib/settings';
+import { saveSchoolDetails } from '@/lib/settings';
 
 async function me() {
   const s = await getSession();
@@ -51,21 +51,20 @@ export async function updateProfile(formData: FormData) {
 
 export async function saveSchool(formData: FormData) {
   await ensureSchema();
-  await mustAdmin();
+  const s = await mustAdmin();
   const name = String(formData.get('school_name') || '').trim().slice(0, 100);
   if (!name) backTo('/admin/account', 'School name is required', true);
-  await setSetting('school_name', name);
-  await setSetting('school_address', String(formData.get('school_address') || '').trim().slice(0, 200));
+  await saveSchoolDetails(s.sid, name, String(formData.get('school_address') || '').trim().slice(0, 200));
   backTo('/admin/account', 'School details saved');
 }
 
 export async function adminResetPassword(formData: FormData) {
   await ensureSchema();
-  await mustAdmin();
+  const adm = await mustAdmin();
   const id = Number(formData.get('user_id'));
   const pw = String(formData.get('password') || '');
   if (pw.length < 8) backTo('/admin', 'Password must be at least 8 characters', true);
-  const r = await q<{ name: string }>(`UPDATE att.users SET password_hash = $2 WHERE id = $1 AND role = 'teacher' RETURNING name`, [id, await bcrypt.hash(pw, 10)]);
+  const r = await q<{ name: string }>(`UPDATE att.users SET password_hash = $2 WHERE id = $1 AND role = 'teacher' AND school_id = $3 RETURNING name`, [id, await bcrypt.hash(pw, 10), adm.sid]);
   if (!r.length) backTo('/admin', 'Teacher not found', true);
   backTo('/admin', `Password reset for ${r[0].name}`);
 }

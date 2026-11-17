@@ -9,12 +9,14 @@ export async function middleware(req: NextRequest) {
     const key = new TextEncoder().encode(process.env.SESSION_SECRET || 'dev-only-secret');
     const { payload } = await jwtVerify(token, key);
     const path = req.nextUrl.pathname;
-    if (path.startsWith('/admin') && payload.role !== 'admin') return NextResponse.redirect(new URL('/teacher', req.url));
-    if (path.startsWith('/teacher') && payload.role !== 'teacher') return NextResponse.redirect(new URL('/admin', req.url));
+    const home = payload.role === 'superadmin' ? '/super' : payload.role === 'admin' ? '/admin' : '/teacher';
+    if (path.startsWith('/super') && payload.role !== 'superadmin') return NextResponse.redirect(new URL(home, req.url));
+    if (path.startsWith('/admin') && payload.role !== 'admin') return NextResponse.redirect(new URL(home, req.url));
+    if (path.startsWith('/teacher') && payload.role !== 'teacher') return NextResponse.redirect(new URL(home, req.url));
     return NextResponse.next();
   } catch {
     return NextResponse.redirect(loginUrl);
   }
 }
 
-export const config = { matcher: ['/admin/:path*', '/teacher/:path*', '/api/wa', '/api/attendance'] };
+export const config = { matcher: ['/super/:path*', '/admin/:path*', '/teacher/:path*', '/api/wa', '/api/attendance'] };

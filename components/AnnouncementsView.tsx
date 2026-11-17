@@ -1,4 +1,5 @@
 import { q } from '@/lib/db';
+import { requireModule } from '@/lib/modules';
 import { requireRole } from '@/lib/session';
 import { ensureSchema } from '@/lib/academic';
 import { classesFor } from '@/lib/access';
@@ -8,14 +9,18 @@ import ConfirmButton from './ConfirmButton';
 export default async function AnnouncementsView({ role, searchParams }: { role: 'admin' | 'teacher'; searchParams: { ok?: string; err?: string } }) {
   const s = await requireRole(role);
   await ensureSchema();
+  await requireModule(s, 'announcements', role === 'admin' ? '/admin' : '/teacher');
   const classes = await classesFor(s);
   const counts = await q<{ class_id: number; n: string }>(
     `SELECT st.class_id, COUNT(DISTINCT g.phone) AS n FROM att.guardians g JOIN att.students st ON st.id = g.student_id AND st.active
-     WHERE g.opt_in GROUP BY st.class_id`
+     JOIN att.classes cc ON cc.id = st.class_id
+     WHERE g.opt_in AND cc.school_id = $1 GROUP BY st.class_id`,
+    [s.sid]
   );
   const cnt = new Map(counts.map((c) => [c.class_id, Number(c.n)]));
   const [{ total }] = await q<{ total: string }>(
-    `SELECT COUNT(DISTINCT g.phone) AS total FROM att.guardians g JOIN att.students st ON st.id = g.student_id AND st.active WHERE g.opt_in`
+    `SELECT COUNT(DISTINCT g.phone) AS total FROM att.guardians g JOIN att.students st ON st.id = g.student_id AND st.active JOIN att.classes cc ON cc.id = st.class_id WHERE g.opt_in AND cc.school_id = $1`,
+    [s.sid]
   );
 
   const history = await q<{ id: number; title: string; audience: string; created: string; recipients: number; sent: string; failed: string; pending: string }>(
@@ -27,9 +32,9 @@ export default async function AnnouncementsView({ role, searchParams }: { role: 
             (SELECT COUNT(*) FROM att.notice_log n WHERE n.kind='announcement' AND n.ref_id = a.id AND n.status='failed') AS failed,
             (SELECT COUNT(*) FROM att.notice_log n WHERE n.kind='announcement' AND n.ref_id = a.id AND n.status='queued') AS pending
      FROM att.announcements a LEFT JOIN att.classes c ON c.id = a.class_id
-     WHERE ($1 = 'admin' OR a.created_by = $2)
+     WHERE a.school_id = $3 AND ($1 = 'admin' OR a.created_by = $2)
      ORDER BY a.id DESC LIMIT 30`,
-    [role, s.uid]
+    [role, s.uid, s.sid]
   );
 
   return (

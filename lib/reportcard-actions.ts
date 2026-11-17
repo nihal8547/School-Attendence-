@@ -7,6 +7,7 @@ import { queueNotices } from '@/lib/notify';
 import { appBaseUrl } from '@/lib/settings';
 import { signToken } from '@/lib/sign';
 import { loadCards, fileNameFor } from '@/lib/reportcard';
+import { classHasModule } from '@/lib/modules';
 
 export async function sendReportCards(formData: FormData) {
   await ensureSchema();
@@ -19,6 +20,7 @@ export async function sendReportCards(formData: FormData) {
   );
   if (!exam) backTo(`${base}/marks`, 'Exam not found', true);
   await allowClass(exam.class_id);
+  if (!(await classHasModule(exam.class_id, 'reportcards'))) backTo(path, 'Report cards are not enabled for this class.', true);
 
   const site = appBaseUrl();
   if (!site) backTo(path, 'PUBLIC_APP_URL is not set on the server, so the PDF link cannot be created. Add it to .env and restart the app.', true);

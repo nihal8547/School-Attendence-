@@ -6,6 +6,8 @@ import { getSession } from '@/lib/session';
 import { ensureAcademicTables, DAYS, PERIODS, grade } from '@/lib/academic';
 import { callN8n } from '@/lib/n8n';
 import { getLiveWaStatus } from '@/lib/wa';
+import { allowClass } from '@/lib/access';
+import { classHasModule, classPolicy } from '@/lib/modules';
 
 function baseOf(formData: FormData) {
   return formData.get('base') === '/admin' ? '/admin' : '/teacher';
@@ -15,15 +17,6 @@ function back(path: string, msg: string, err = false): never {
   redirect(`${path}${path.includes('?') ? '&' : '?'}${err ? 'err' : 'ok'}=${encodeURIComponent(msg)}`);
 }
 
-// Admin may touch any class; a teacher only their own.
-async function allowClass(classId: number) {
-  const s = await getSession();
-  if (!s) redirect('/login');
-  if (s.role === 'admin') return s;
-  const own = await q(`SELECT 1 FROM att.classes WHERE id = $1 AND teacher_id = $2`, [classId, s.uid]);
-  if (!own.length) redirect('/login');
-  return s;
-}
 
 export async function saveTimetable(formData: FormData) {
   await ensureAcademicTables();
@@ -220,6 +213,8 @@ export async function sendMarksheet(formData: FormData) {
   if (!exam) back(`${base}/marks`, 'Exam not found', true);
   await allowClass(exam.class_id);
   const path = `${base}/marks/${examId}`;
+  if (!(await classHasModule(exam.class_id, 'marks'))) back(path, 'Mark sheets are not enabled for this class.', true);
+  const policy = await classPolicy(exam.class_id);
 
   const subjects = await q<{ subject: string; max_marks: number }>(`SELECT subject, max_marks FROM att.exam_subjects WHERE exam_id = $1 ORDER BY position`, [examId]);
   const students = await q<{ id: number; name: string }>(`SELECT id, name FROM att.students WHERE class_id = $1 AND active ORDER BY roll_no, name`, [exam.class_id]);
@@ -247,10 +242,16 @@ export async function sendMarksheet(formData: FormData) {
   const items: Notice[] = [];
   for (const r of done) {
     const pct = maxTotal ? (r.total / maxTotal) * 100 : 0;
+    const body =
+      policy.grading === 'grades'
+        ? subjects.map((s, i) => `${s.subject}: ${grade((Number(r.got[i]) / s.max_marks) * 100)}`).join('\n') + `\n\n*Overall grade:* ${grade(pct)}`
+        : subjects.map((s, i) => `${s.subject}: ${r.got[i]}/${s.max_marks}`).join('\n') +
+          `\n\n*Total:* ${r.total}/${maxTotal}\n*Percentage:* ${pct.toFixed(1)}%\n*Grade:* ${grade(pct)}`;
     const text =
       `📝 *${exam.name} – Mark Sheet*\n\n*${r.st.name}* (Class ${exam.class_name})\n\n` +
-      subjects.map((s, i) => `${s.subject}: ${r.got[i]}/${s.max_marks}`).join('\n') +
-      `\n\n*Total:* ${r.total}/${maxTotal}\n*Percentage:* ${pct.toFixed(1)}%\n*Grade:* ${grade(pct)}\n*Rank:* ${rank.get(r.st.id)} of ${done.length}\n\n– Class Teacher, ${exam.class_name}`;
+      body +
+      (policy.showRank ? `\n*Rank:* ${rank.get(r.st.id)} of ${done.length}` : '') +
+      `\n\n– Class Teacher, ${exam.class_name}`;
     for (const g of guardians.filter((x) => x.student_id === r.st.id)) items.push({ studentId: r.st.id, phone: g.phone, text });
   }
   await queueAndSend('marksheet', exam.class_id, examId, items, path, exam.teacher_id);
