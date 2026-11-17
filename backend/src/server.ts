@@ -21,6 +21,9 @@ import { loadCards, buildPdf, fileNameFor } from './lib/reportcard.js';
 import { parseParams, scopeClassIds, studentSummary, absenteeList, classComparison, pct } from './lib/reports.js';
 import { csvCell, fmtDate } from './lib/format.js';
 import { startScheduler } from './scheduler.js';
+import { readUpload, importStudentRows, summarize, TEMPLATE_HEAD, TEMPLATE_SAMPLE } from './lib/importer.js';
+import { allowClass } from './lib/access.js';
+import { clearCache } from './cache.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -167,6 +170,48 @@ app.get('/v1/q/:name', async (req, reply) => {
     if (e instanceof Forbidden) return reply.code(403).send({ ok: false, error: 'Not allowed' });
     throw e;
   }
+});
+
+/* ------------------------------ student bulk import ------------------------------ */
+const ImportBody = z.object({ class_id: z.coerce.number().int().positive(), filename: z.string().max(200), data: z.string().max(4_000_000) });
+
+app.post('/v1/files/students-import', { bodyLimit: 4_500_000, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
+  const s = needSession(req, reply, ['admin']);
+  if (!s) return;
+  const b = ImportBody.safeParse(req.body);
+  if (!b.success) return reply.code(400).send({ ok: false, error: 'Invalid upload' });
+  try {
+    await allowClass(b.data.class_id);
+    const rows = await readUpload(b.data.filename, Buffer.from(b.data.data, 'base64'));
+    const res = await importStudentRows(b.data.class_id, rows);
+    clearCache();
+    q(`INSERT INTO att.audit_log (user_id, school_id, action, target, ip, ok) VALUES ($1,$2,'importStudentsFile',$3,$4,TRUE)`, [s.uid, s.sid || null, `class ${b.data.class_id}: +${res.added}`, req.clientIp]).catch(() => {});
+    const sm = summarize(res);
+    return { ok: true, message: sm.msg, warn: sm.err, added: res.added };
+  } catch (e) {
+    if (e instanceof Forbidden) return reply.code(403).send({ ok: false, error: 'Not allowed' });
+    if (e instanceof Redirect) return reply.code(403).send({ ok: false, error: 'Not allowed' });
+    return reply.code(400).send({ ok: false, error: (e as Error).message.slice(0, 200) || 'Could not read the file' });
+  }
+});
+
+app.get('/v1/files/students-template.:ext', async (req, reply) => {
+  const s = needSession(req, reply, ['admin']);
+  if (!s) return;
+  const ext = String((req.params as any).ext);
+  reply.header('cache-control', 'no-store');
+  reply.header('content-disposition', `attachment; filename="students-template.${ext === 'xlsx' ? 'xlsx' : 'csv'}"`);
+  if (ext === 'xlsx') {
+    const { default: writeExcelFile } = await import('write-excel-file/node');
+    const head = TEMPLATE_HEAD.map((v) => ({ value: v, fontWeight: 'bold' as const }));
+    const body = TEMPLATE_SAMPLE.map((r) => [{ value: Number(r[0]), type: Number }, { value: String(r[1]), type: String }, { value: String(r[2]), type: String }, { value: String(r[3]), type: String }]);
+    const buf = await writeExcelFile([head, ...body] as any).toBuffer();
+    reply.header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    return reply.send(buf);
+  }
+  if (ext !== 'csv') return reply.code(404).send({ ok: false });
+  reply.header('content-type', 'text/csv; charset=utf-8');
+  return [TEMPLATE_HEAD, ...TEMPLATE_SAMPLE].map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 });
 
 /* ------------------------------ attendance ------------------------------ */

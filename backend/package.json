@@ -19,6 +19,8 @@
     "jose": "^6.2.17",
     "pdf-lib": "^1.17.1",
     "pg": "^8.23.1",
+    "read-excel-file": "^9.3.17",
+    "write-excel-file": "^4.1.1",
     "zod": "^4.0.0"
   },
   "devDependencies": {

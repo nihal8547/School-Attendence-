@@ -7,6 +7,7 @@ import { requireRole } from '../lib/session.js';
 import { allowClass, schoolOwns } from '../lib/access.js';
 import { normalizeIndianPhone } from '../lib/phone.js';
 import { callN8n } from '../lib/n8n.js';
+import { importStudentRows, parseCsv, summarize } from '../lib/importer.js';
 
 function back(path: string, msg: string, err = false): never {
   redirect(`${path}${path.includes('?') ? '&' : '?'}${err ? 'err' : 'ok'}=${encodeURIComponent(msg)}`);
@@ -72,32 +73,41 @@ export async function addStudent(formData: FormLike) {
   back(base, `${name} added`);
 }
 
-// CSV lines: roll_no,student_name,guardian_name,phone
+// Pasted CSV lines: roll_no,student_name,guardian_name,phone
 export async function importStudents(formData: FormLike) {
   await requireRole('admin');
   const classId = Number(formData.get('class_id'));
   await allowClass(classId);
   const base = `/admin/students?class=${classId}`;
-  const text = String(formData.get('csv') || '');
   if (!classId) back(base, 'Pick a class first', true);
-  let added = 0;
-  const bad: string[] = [];
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || /^roll/i.test(line)) continue;
-    const [roll, name, gName, phoneRaw] = line.split(',').map((x) => x.trim());
-    const phone = normalizeIndianPhone(phoneRaw);
-    if (!name || !phone) {
-      bad.push(line);
-      continue;
-    }
-    const [s] = await q(`INSERT INTO att.students (class_id, roll_no, name) VALUES ($1,$2,$3) RETURNING id`, [classId, Number(roll) || 0, name]);
-    await q(`INSERT INTO att.guardians (student_id, name, phone) VALUES ($1,$2,$3)`, [s.id, gName || null, phone]);
-    added++;
+  let res;
+  try {
+    res = await importStudentRows(classId, parseCsv(String(formData.get('csv') || '')));
+  } catch (e) {
+    back(base, (e as Error).message, true);
   }
   revalidatePath('/admin/students');
-  if (bad.length) back(base, `${added} added. ${bad.length} skipped (bad name/phone): ${bad.slice(0, 3).join(' | ')}`, true);
-  back(base, `${added} students imported`);
+  const sm = summarize(res!);
+  back(base, sm.msg, sm.err);
+}
+
+export async function updateTeacher(formData: FormLike) {
+  const adm = await requireRole('admin');
+  const id = Number(formData.get('user_id'));
+  const name = String(formData.get('name') || '').trim();
+  const email = String(formData.get('email') || '').trim().toLowerCase();
+  const phone = normalizeIndianPhone(String(formData.get('phone') || ''));
+  const base = '/admin?tab=teachers';
+  if (!(await schoolOwns(adm, 'user', id))) back(base, 'Teacher not found', true);
+  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) back(base, 'Enter a name and a valid email', true);
+  if (!phone) back(base, 'Enter a valid Indian mobile number', true);
+  try {
+    await q(`UPDATE att.users SET name = $2, email = $3, phone = $4 WHERE id = $1 AND role = 'teacher' AND school_id = $5`, [id, name, email, phone, adm.sid]);
+  } catch {
+    back(base, 'That email is already used', true);
+  }
+  revalidatePath('/admin');
+  back(base, `${name} updated`);
 }
 
 export async function removeStudent(formData: FormLike) {

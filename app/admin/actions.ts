@@ -30,3 +30,7 @@ export async function retryFailed(formData: FormData) {
   return runAction('retryFailed', formData);
 }
 
+
+export async function updateTeacher(formData: FormData) {
+  return runAction('updateTeacher', formData);
+}

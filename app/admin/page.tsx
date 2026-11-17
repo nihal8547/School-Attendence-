@@ -3,7 +3,7 @@ import { getData } from '@/lib/api';
 import { adminResetPassword } from '@/lib/account-actions';
 import { requireRole } from '@/lib/session';
 import { fmtPhone } from '@/lib/format';
-import { createTeacher, createClass, assignTeacher } from './actions';
+import { createTeacher, createClass, assignTeacher, updateTeacher } from './actions';
 import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
@@ -87,6 +87,16 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                 <div className="chips">
                   {mine.length ? mine.map((c) => <span className="chip" key={c.id}>Class {c.name}</span>) : <span className="muted" style={{ fontSize: 13 }}>No class assigned</span>}
                 </div>
+                <details className="tile-more">
+                  <summary><Icon n="note" /> Edit details</summary>
+                  <form action={updateTeacher} className="stack" style={{ marginTop: 10 }}>
+                    <input type="hidden" name="user_id" value={t.id} />
+                    <label>Name<input name="name" defaultValue={t.name} required /></label>
+                    <label>Email<input name="email" type="email" defaultValue={t.email} required /></label>
+                    <label>WhatsApp phone<input name="phone" defaultValue={t.phone ?? ''} required /></label>
+                    <button type="submit" style={{ alignSelf: 'flex-start' }}>Save changes</button>
+                  </form>
+                </details>
                 <details className="tile-more">
                   <summary><Icon n="key" /> Reset password</summary>
                   <form action={adminResetPassword} style={{ display: 'flex', gap: 8, marginTop: 10 }}>

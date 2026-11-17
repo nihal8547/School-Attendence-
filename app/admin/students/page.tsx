@@ -2,6 +2,7 @@ import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { addStudent, importStudents, removeStudent } from '../actions';
 import Icon from '@/components/Icon';
+import ImportUpload from '@/components/ImportUpload';
 
 export default async function StudentsPage({
   searchParams,
@@ -77,11 +78,14 @@ export default async function StudentsPage({
 
       {/* Bulk CSV Import */}
       <div className="card">
-        <h2>Bulk Import via CSV</h2>
+        <h2>Bulk Import (Excel / CSV)</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Enter one student per line in the format: <code>roll_no,student_name,parent_name,whatsapp_number</code>
+          Download the template, fill one student per row (<code>Roll No, Student Name, Parent Name, Parent WhatsApp</code>) and upload it for the selected class. Existing roll numbers are skipped.
         </p>
-        <form action={importStudents} className="stack">
+        <ImportUpload classId={classId} />
+        <details style={{ marginTop: 14 }}>
+        <summary className="muted" style={{ cursor: 'pointer' }}>Or paste CSV text</summary>
+        <form action={importStudents} className="stack" style={{ marginTop: 10 }}>
           <input type="hidden" name="class_id" value={classId} />
           <textarea
             name="csv"
@@ -91,6 +95,7 @@ export default async function StudentsPage({
             Import Students
           </button>
         </form>
+        </details>
       </div>
 
       {/* Students Table */}
