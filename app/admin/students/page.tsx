@@ -1,5 +1,6 @@
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
+import { classesFor } from '@/lib/access';
 import { addStudent, importStudents, removeStudent } from '../actions';
 
 export default async function StudentsPage({
@@ -7,10 +8,10 @@ export default async function StudentsPage({
 }: {
   searchParams: Promise<{ class?: string; ok?: string; err?: string }>;
 }) {
-  await requireRole('admin');
+  const s = await requireRole('admin');
   const sp = await searchParams;
-  const classes = await q(`SELECT id, name FROM att.classes ORDER BY name`);
-  const classId = Number(sp.class) || classes[0]?.id || 0;
+  const classes = await classesFor(s);
+  const classId = classes.some((c) => c.id === Number(sp.class)) ? Number(sp.class) : classes[0]?.id || 0;
   const students = classId
     ? await q(
         `SELECT s.id, s.roll_no, s.name,

@@ -59,3 +59,12 @@ Set `PUBLIC_APP_URL` in `.env` (e.g. `https://sa.nihalbabu.in`) so report-card P
 
 ### Sending queue (many teachers at once)
 Submitting attendance saves the marks **and** queues every parent message in one DB transaction, so a busy/down n8n never loses anything. n8n sends each teacher's messages one by one (5–12 s gap + typing delay) from that teacher's own WhatsApp; different teachers send in parallel. Messages are claimed with `FOR UPDATE SKIP LOCKED` (no duplicates), and the "Queue Sweeper" workflow (every 2 min) restarts anything stuck or failed (max 3 tries).
+
+## Multi-school, Super Admin, Class Groups & Modules
+
+- **Super Admin** (`/super`): creates schools, adds a school admin for each, suspends a school, and switches modules on/off per school. Create one with `SUPERADMIN_EMAIL` + `SUPERADMIN_PASSWORD` (min 8 chars) in `.env`, then run `node scripts/setup-db.mjs` (or `docker compose -f docker-compose.server.yml run --rm app node scripts/setup-db.mjs`). Change the password in *My Account* after the first login.
+- **Existing data** becomes school 1 automatically (schema migration runs on first page load).
+- **Class Groups** (`/admin/groups`): school admin makes groups (Primary, Upper Primary, Secondary…), assigns classes to a group, and switches modules per group. A module is active for a class only if the school has it ON *and* its group does not turn it OFF.
+- **Grading scheme per group**: `marks` (total, %, rank) or `grades` (subject and overall grades only; rank optional). Used in mark sheets, WhatsApp results and report cards.
+- **Academic modules**: Homework, Syllabus / Lesson plan, Leave requests, Remarks & Achievements (each can notify parents on WhatsApp), plus Timetable, Marks, Report cards, Fees, Announcements, Holidays, Reports.
+- Attendance is always on. New modules default to ON for a school until the Super Admin turns them off.

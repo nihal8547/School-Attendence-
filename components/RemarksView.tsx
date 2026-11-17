@@ -1,0 +1,60 @@
+import { q } from '@/lib/db';
+import { addRemark, deleteRemark } from '@/lib/academic2-actions';
+import { moduleContext, ModuleHead, type ModProps } from './ModuleShell';
+
+const ICON: Record<string, string> = { achievement: '🏆', behavior: '📌', general: '📝' };
+
+export default async function RemarksView({ role, searchParams }: ModProps) {
+  const { classes, classId } = await moduleContext(role, 'remarks', searchParams);
+  const students = classId ? await q<{ id: number; roll_no: number; name: string }>(`SELECT id, roll_no, name FROM att.students WHERE class_id = $1 AND active ORDER BY roll_no, name`, [classId]) : [];
+  const rows = classId
+    ? await q<{ id: number; student: string; kind: string; note: string; created: string; by: string | null }>(
+        `SELECT r.id, s.name AS student, r.kind, r.note, to_char(r.created_at AT TIME ZONE 'Asia/Kolkata', 'DD Mon YYYY') AS created, u.name AS by
+         FROM att.student_remarks r JOIN att.students s ON s.id = r.student_id LEFT JOIN att.users u ON u.id = r.created_by
+         WHERE s.class_id = $1 ORDER BY r.created_at DESC LIMIT 60`,
+        [classId]
+      )
+    : [];
+  return (
+    <>
+      <ModuleHead title="Remarks & Achievements" intro="Note a student's achievement, behaviour or any remark. Send it to the parent if you want." searchParams={searchParams} classes={classes} classId={classId} />
+      {classId > 0 && (
+        <>
+          <form action={addRemark} className="card">
+            <input type="hidden" name="class_id" value={classId} />
+            <h2>New remark</h2>
+            <div className="row filters">
+              <label>Student
+                <select name="student_id" required>{students.map((s) => <option key={s.id} value={s.id}>{s.roll_no}. {s.name}</option>)}</select>
+              </label>
+              <label>Type
+                <select name="kind" defaultValue="general"><option value="achievement">🏆 Achievement</option><option value="behavior">📌 Behaviour</option><option value="general">📝 General</option></select>
+              </label>
+            </div>
+            <label style={{ marginTop: 12 }}>Remark<textarea name="note" rows={3} required maxLength={500} /></label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, flexWrap: 'wrap', gap: 10 }}>
+              <label className="check-row"><input type="checkbox" name="notify" /> Send to parent on WhatsApp</label>
+              <button type="submit">Save remark</button>
+            </div>
+          </form>
+          <div className="tile-grid">
+            {rows.map((r) => (
+              <div className="tile" key={r.id}>
+                <div className="tile-top">
+                  <div className="avatar" style={{ fontSize: 18 }}>{ICON[r.kind]}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="tile-title">{r.student}</div>
+                    <div className="tile-sub">{r.created}{r.by ? ` · ${r.by}` : ''}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 14.5, whiteSpace: 'pre-wrap' }}>{r.note}</div>
+                <form action={deleteRemark}><input type="hidden" name="id" value={r.id} /><button type="submit" className="danger" style={{ padding: '6px 12px' }}>Remove</button></form>
+              </div>
+            ))}
+            {!rows.length && <div className="empty">No remarks yet for this class.</div>}
+          </div>
+        </>
+      )}
+    </>
+  );
+}

@@ -40,7 +40,7 @@ export default async function TeacherHome({
     sp.session === 'afternoon' || sp.session === 'morning' ? sp.session : hourIST < 12 ? 'morning' : 'afternoon';
 
   await ensureSchema();
-  const holiday = await holidayOn(date);
+  const holiday = await holidayOn(s.sid, date);
 
   const students = await q(
     `SELECT s.id, s.roll_no, s.name, a.status

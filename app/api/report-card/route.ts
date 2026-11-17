@@ -26,8 +26,9 @@ export async function GET(req: Request) {
   } else {
     const s = await getSession();
     if (s) {
-      if (s.role === 'admin') ok = true;
-      else {
+      if (s.role === 'admin') {
+        ok = (await q(`SELECT 1 FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1 AND c.school_id = $2`, [exam, s.sid])).length > 0;
+      } else if (s.role === 'teacher') {
         const own = await q(`SELECT 1 FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1 AND c.teacher_id = $2`, [exam, s.uid]);
         ok = own.length > 0;
       }

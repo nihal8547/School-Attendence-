@@ -16,13 +16,23 @@ try {
   if (email && password.length >= 8) {
     const hash = await bcrypt.hash(password, 10);
     await pool.query(
-      `INSERT INTO att.users (name, email, password_hash, role) VALUES ($1,$2,$3,'admin')
+      `INSERT INTO att.users (name, email, password_hash, role, school_id) VALUES ($1,$2,$3,'admin',1)
        ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
       [process.env.ADMIN_NAME || 'Admin', email, hash]
     );
     console.log('Admin ready:', email);
   } else {
     console.log('No ADMIN_EMAIL/ADMIN_PASSWORD set, skipping admin creation.');
+  }
+  const sEmail = (process.env.SUPERADMIN_EMAIL || '').toLowerCase();
+  const sPass = process.env.SUPERADMIN_PASSWORD || '';
+  if (sEmail && sPass.length >= 8) {
+    await pool.query(
+      `INSERT INTO att.users (name, email, password_hash, role, school_id) VALUES ('Super Admin',$1,$2,'superadmin',NULL)
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'superadmin', school_id = NULL`,
+      [sEmail, await bcrypt.hash(sPass, 10)]
+    );
+    console.log('Super admin ready:', sEmail);
   }
 } catch (e) {
   console.error('Setup failed:', e.message);

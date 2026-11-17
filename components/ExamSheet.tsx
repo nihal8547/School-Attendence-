@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
 import { ensureAcademicTables } from '@/lib/academic';
+import { classHasModule, classPolicy } from '@/lib/modules';
+import { subjectGrade } from '@/lib/reportcard';
 import { saveMarks, deleteExam, sendMarksheet } from '@/lib/academic-actions';
 import { sendReportCards } from '@/lib/reportcard-actions';
 import PrintButton from './PrintButton';
@@ -33,10 +35,13 @@ export default async function ExamSheet({
 
   const [exam] = await q(
     `SELECT e.id, e.name, e.class_id, c.name AS class_name, c.teacher_id, to_char(e.exam_date, 'DD Mon YYYY') AS date_label
-     FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1`,
-    [examId]
+     FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1 AND c.school_id = $2`,
+    [examId, s.sid]
   );
-  if (!exam || (role === 'teacher' && exam.teacher_id !== s.uid)) notFound();
+  if (!exam || (role === 'teacher' && exam.teacher_id !== s.uid) || !(await classHasModule(exam.class_id, 'marks'))) notFound();
+  const policy = await classPolicy(exam.class_id);
+  const gradesOnly = policy.grading === 'grades';
+  const cardsOn = await classHasModule(exam.class_id, 'reportcards');
 
   const subjects = await q<{ subject: string; max_marks: number }>(
     `SELECT subject, max_marks FROM att.exam_subjects WHERE exam_id = $1 ORDER BY position`,
@@ -132,26 +137,25 @@ export default async function ExamSheet({
           <table className="no-stack">
             <thead>
               <tr>
-                <th>Rank</th><th>Roll</th><th>Student</th>
+                {policy.showRank && <th>Rank</th>}<th>Roll</th><th>Student</th>
                 {subjects.map((sub) => <th key={sub.subject}>{sub.subject}</th>)}
-                <th>Total / {maxTotal}</th><th>%</th><th>Grade</th><th className="no-print">Card</th>
+                {!gradesOnly && <><th>Total / {maxTotal}</th><th>%</th></>}<th>Grade</th>{cardsOn && <th className="no-print">Card</th>}
               </tr>
             </thead>
             <tbody>
               {results.map((r) => (
                 <tr key={r.id}>
-                  <td>{r.complete ? rankOf.get(r.id) : '—'}</td>
+                  {policy.showRank && <td>{r.complete ? rankOf.get(r.id) : '—'}</td>}
                   <td>{r.roll_no}</td>
                   <td>{r.name}</td>
                   {subjects.map((sub) => {
                     const v = marks.get(`${r.id}_${sub.subject}`);
                     const fail = v !== undefined && v < sub.max_marks * 0.35;
-                    return <td key={sub.subject} style={fail ? { color: 'var(--red-ink)', fontWeight: 700 } : undefined}>{v ?? '—'}</td>;
+                    return <td key={sub.subject} style={fail ? { color: 'var(--red-ink)', fontWeight: 700 } : undefined}>{gradesOnly ? subjectGrade(v ?? null, sub.max_marks) : v ?? '—'}</td>;
                   })}
-                  <td><strong>{r.complete ? r.total : '—'}</strong></td>
-                  <td>{r.complete ? r.pct.toFixed(1) : '—'}</td>
+                  {!gradesOnly && <><td><strong>{r.complete ? r.total : '—'}</strong></td><td>{r.complete ? r.pct.toFixed(1) : '—'}</td></>}
                   <td>{r.complete ? grade(r.pct) : '—'}</td>
-                  <td className="no-print">{r.complete ? <a href={`/api/report-card?exam=${examId}&student=${r.id}`} target="_blank" rel="noreferrer">PDF</a> : '—'}</td>
+                  {cardsOn && <td className="no-print">{r.complete ? <a href={`/api/report-card?exam=${examId}&student=${r.id}`} target="_blank" rel="noreferrer">PDF</a> : '—'}</td>}
                 </tr>
               ))}
             </tbody>
@@ -172,7 +176,7 @@ export default async function ExamSheet({
         </div>
       </form>
 
-      <div className="card no-print">
+      {cardsOn && <div className="card no-print">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div>
             <strong>Report cards (PDF)</strong>
@@ -187,7 +191,7 @@ export default async function ExamSheet({
             </form>
           </div>
         </div>
-      </div>
+      </div>}
 
       <form action={deleteExam} className="no-print" style={{ marginTop: 8 }}>
         <input type="hidden" name="exam_id" value={examId} />

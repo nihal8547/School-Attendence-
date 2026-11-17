@@ -3,14 +3,15 @@ import { notFound } from 'next/navigation';
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
 import { ensureSchema } from '@/lib/academic';
-import { loadCards } from '@/lib/reportcard';
+import { classHasModule } from '@/lib/modules';
+import { loadCards, subjectGrade } from '@/lib/reportcard';
 import PrintButton from './PrintButton';
 
 export default async function ReportCardsPrint({ role, examId, studentId }: { role: 'admin' | 'teacher'; examId: number; studentId?: number }) {
   const s = await requireRole(role);
   await ensureSchema();
-  const [own] = await q<{ teacher_id: number | null }>(`SELECT c.teacher_id FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1`, [examId]);
-  if (!own || (role === 'teacher' && own.teacher_id !== s.uid)) notFound();
+  const [own] = await q<{ teacher_id: number | null; class_id: number }>(`SELECT c.teacher_id, c.id AS class_id FROM att.exams e JOIN att.classes c ON c.id = e.class_id WHERE e.id = $1 AND c.school_id = $2`, [examId, s.sid]);
+  if (!own || (role === 'teacher' && own.teacher_id !== s.uid) || !(await classHasModule(own.class_id, 'reportcards'))) notFound();
   const cards = await loadCards(examId, studentId);
   if (!cards.length) notFound();
   const base = role === 'admin' ? '/admin' : '/teacher';
@@ -34,22 +35,22 @@ export default async function ReportCardsPrint({ role, examId, studentId }: { ro
             <div><span className="muted">Roll no.</span><br /><strong>{c.student.roll_no}</strong></div>
           </div>
           <table className="no-stack">
-            <thead><tr><th>Subject</th><th style={{ textAlign: 'right' }}>Max</th><th style={{ textAlign: 'right' }}>Obtained</th></tr></thead>
+            <thead><tr><th>Subject</th>{c.scheme === 'marks' && <th style={{ textAlign: 'right' }}>Max</th>}<th style={{ textAlign: 'right' }}>{c.scheme === 'marks' ? 'Obtained' : 'Grade'}</th></tr></thead>
             <tbody>
               {c.subjects.map((x) => (
                 <tr key={x.subject}>
                   <td>{x.subject}</td>
-                  <td style={{ textAlign: 'right' }}>{x.max}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600, color: x.got !== null && x.got < x.max * 0.35 ? '#b91c1c' : undefined }}>{x.got ?? '—'}</td>
+                  {c.scheme === 'marks' && <td style={{ textAlign: 'right' }}>{x.max}</td>}
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: c.scheme === 'marks' && x.got !== null && x.got < x.max * 0.35 ? '#b91c1c' : undefined }}>{c.scheme === 'marks' ? x.got ?? '—' : subjectGrade(x.got, x.max)}</td>
                 </tr>
               ))}
-              <tr><td><strong>Total</strong></td><td style={{ textAlign: 'right' }}><strong>{c.maxTotal}</strong></td><td style={{ textAlign: 'right' }}><strong>{c.complete ? c.total : '—'}</strong></td></tr>
+              {c.scheme === 'marks' && <tr><td><strong>Total</strong></td><td style={{ textAlign: 'right' }}><strong>{c.maxTotal}</strong></td><td style={{ textAlign: 'right' }}><strong>{c.complete ? c.total : '—'}</strong></td></tr>}
             </tbody>
           </table>
           <div className="stat-grid" style={{ marginTop: 14 }}>
-            <div className="stat-box"><div className="n">{c.complete ? `${c.pct.toFixed(1)}%` : '—'}</div><div className="l">Percentage</div></div>
-            <div className="stat-box"><div className="n">{c.complete ? c.grade : '—'}</div><div className="l">Grade</div></div>
-            <div className="stat-box"><div className="n">{c.rank ? `${c.rank}/${c.classSize}` : '—'}</div><div className="l">Rank</div></div>
+            {c.scheme === 'marks' && <div className="stat-box"><div className="n">{c.complete ? `${c.pct.toFixed(1)}%` : '—'}</div><div className="l">Percentage</div></div>}
+            <div className="stat-box"><div className="n">{c.complete ? c.grade : '—'}</div><div className="l">{c.scheme === 'marks' ? 'Grade' : 'Overall grade'}</div></div>
+            {c.showRank && <div className="stat-box"><div className="n">{c.rank ? `${c.rank}/${c.classSize}` : '—'}</div><div className="l">Rank</div></div>}
             <div className="stat-box"><div className="n">{c.attendance === null ? '—' : `${c.attendance.toFixed(0)}%`}</div><div className="l">Attendance</div></div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 48, color: '#6b7280', fontSize: 13 }}>

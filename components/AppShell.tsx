@@ -10,12 +10,15 @@ export interface AppShellProps {
   user: {
     uid: number;
     name: string;
-    role: 'admin' | 'teacher';
+    role: 'superadmin' | 'admin' | 'teacher';
   };
+  /** Module keys switched on for this person (menu items of other modules are hidden). */
+  modules?: string[];
+  schoolName?: string;
   children: React.ReactNode;
 }
 
-export default function AppShell({ user, children }: AppShellProps) {
+export default function AppShell({ user, modules, schoolName, children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
@@ -55,34 +58,55 @@ export default function AppShell({ user, children }: AppShellProps) {
     chart: <Ic><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Ic>,
     rupee: <Ic><path d="M6 3h12M6 8h12M6 13l8.5 8M6 13h3a4 4 0 0 0 0-10" /></Ic>,
     user: <Ic><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></Ic>,
+    book: <Ic><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></Ic>,
+    layers: <Ic><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></Ic>,
+    list: <Ic><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></Ic>,
+    star: <Ic><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></Ic>,
+    leave: <Ic><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></Ic>,
+    school: <Ic><path d="M3 21h18" /><path d="M5 21V8l7-5 7 5v13" /><path d="M9 21v-6h6v6" /></Ic>,
   };
 
-  type Item = { href: string; label: string; short: string; icon: React.ReactNode; exact: boolean; primary?: boolean };
+  type Item = { href: string; label: string; short: string; icon: React.ReactNode; exact: boolean; primary?: boolean; module?: string };
   const adminNav: Item[] = [
     { href: '/admin', label: 'Teachers & Classes', short: 'Teachers', icon: icons.people, exact: true, primary: true },
+    { href: '/admin/groups', label: 'Class Groups', short: 'Groups', icon: icons.layers, exact: false },
     { href: '/admin/students', label: 'Students', short: 'Students', icon: icons.cap, exact: false, primary: true },
-    { href: '/admin/fees', label: 'Fees', short: 'Fees', icon: icons.rupee, exact: false, primary: true },
-    { href: '/admin/reports', label: 'Reports', short: 'Reports', icon: icons.chart, exact: false, primary: true },
-    { href: '/admin/timetable', label: 'Timetable', short: 'Timetable', icon: icons.table, exact: false },
-    { href: '/admin/marks', label: 'Mark Sheets', short: 'Marks', icon: icons.marks, exact: false },
-    { href: '/admin/announcements', label: 'Announcements', short: 'Notices', icon: icons.mega, exact: false },
-    { href: '/admin/holidays', label: 'Holidays', short: 'Holidays', icon: icons.sun, exact: false },
+    { href: '/admin/fees', label: 'Fees', short: 'Fees', icon: icons.rupee, exact: false, primary: true, module: 'fees' },
+    { href: '/admin/reports', label: 'Reports', short: 'Reports', icon: icons.chart, exact: false, primary: true, module: 'reports' },
+    { href: '/admin/homework', label: 'Homework', short: 'Homework', icon: icons.book, exact: false, module: 'homework' },
+    { href: '/admin/syllabus', label: 'Syllabus', short: 'Syllabus', icon: icons.list, exact: false, module: 'syllabus' },
+    { href: '/admin/leaves', label: 'Leave Requests', short: 'Leaves', icon: icons.leave, exact: false, module: 'leaves' },
+    { href: '/admin/remarks', label: 'Remarks', short: 'Remarks', icon: icons.star, exact: false, module: 'remarks' },
+    { href: '/admin/timetable', label: 'Timetable', short: 'Timetable', icon: icons.table, exact: false, module: 'timetable' },
+    { href: '/admin/marks', label: 'Mark Sheets', short: 'Marks', icon: icons.marks, exact: false, module: 'marks' },
+    { href: '/admin/announcements', label: 'Announcements', short: 'Notices', icon: icons.mega, exact: false, module: 'announcements' },
+    { href: '/admin/holidays', label: 'Holidays', short: 'Holidays', icon: icons.sun, exact: false, module: 'holidays' },
     { href: '/admin/logs', label: 'Message Log', short: 'Log', icon: icons.log, exact: false },
     { href: '/admin/account', label: 'Account & School', short: 'Account', icon: icons.user, exact: false },
   ];
   const teacherNav: Item[] = [
     { href: '/teacher', label: 'Dashboard', short: 'Home', icon: icons.grid, exact: true, primary: true },
     { href: '/teacher/attendance', label: 'Mark Attendance', short: 'Attendance', icon: icons.check, exact: true, primary: true },
-    { href: '/teacher/timetable', label: 'Timetable', short: 'Timetable', icon: icons.table, exact: false, primary: true },
-    { href: '/teacher/marks', label: 'Mark Sheets', short: 'Marks', icon: icons.marks, exact: false, primary: true },
-    { href: '/teacher/announcements', label: 'Announcements', short: 'Notices', icon: icons.mega, exact: false },
-    { href: '/teacher/holidays', label: 'Holidays', short: 'Holidays', icon: icons.sun, exact: false },
-    { href: '/teacher/reports', label: 'Reports', short: 'Reports', icon: icons.chart, exact: false },
+    { href: '/teacher/homework', label: 'Homework', short: 'Homework', icon: icons.book, exact: false, primary: true, module: 'homework' },
+    { href: '/teacher/timetable', label: 'Timetable', short: 'Timetable', icon: icons.table, exact: false, module: 'timetable' },
+    { href: '/teacher/marks', label: 'Mark Sheets', short: 'Marks', icon: icons.marks, exact: false, primary: true, module: 'marks' },
+    { href: '/teacher/syllabus', label: 'Syllabus', short: 'Syllabus', icon: icons.list, exact: false, module: 'syllabus' },
+    { href: '/teacher/leaves', label: 'Leave Requests', short: 'Leaves', icon: icons.leave, exact: false, module: 'leaves' },
+    { href: '/teacher/remarks', label: 'Remarks', short: 'Remarks', icon: icons.star, exact: false, module: 'remarks' },
+    { href: '/teacher/announcements', label: 'Announcements', short: 'Notices', icon: icons.mega, exact: false, module: 'announcements' },
+    { href: '/teacher/holidays', label: 'Holidays', short: 'Holidays', icon: icons.sun, exact: false, module: 'holidays' },
+    { href: '/teacher/reports', label: 'Reports', short: 'Reports', icon: icons.chart, exact: false, module: 'reports' },
     { href: '/teacher/whatsapp', label: 'My WhatsApp', short: 'WhatsApp', icon: icons.wa, exact: false },
     { href: '/teacher/account', label: 'My Account', short: 'Account', icon: icons.user, exact: false },
   ];
+  const superNav: Item[] = [
+    { href: '/super', label: 'Schools', short: 'Schools', icon: icons.school, exact: false, primary: true },
+    { href: '/super/account', label: 'My Account', short: 'Account', icon: icons.user, exact: false, primary: true },
+  ];
 
-  const navItems = user.role === 'admin' ? adminNav : teacherNav;
+  const baseItems = user.role === 'superadmin' ? superNav : user.role === 'admin' ? adminNav : teacherNav;
+  const navItems = baseItems.filter((i) => !i.module || !modules || modules.includes(i.module));
+  const accountHref = user.role === 'superadmin' ? '/super/account' : user.role === 'admin' ? '/admin/account' : '/teacher/account';
 
   const isActive = (itemHref: string, exact: boolean) => {
     if (exact) return pathname === itemHref;
@@ -144,7 +168,7 @@ export default function AppShell({ user, children }: AppShellProps) {
             </div>
             <div className="brand-text">
               <div className="brand-title">Attendence</div>
-              <div className="brand-subtitle">School Portal</div>
+              <div className="brand-subtitle">{schoolName || (user.role === 'superadmin' ? 'Super Admin' : 'School Portal')}</div>
             </div>
           </div>
           <button
@@ -161,7 +185,7 @@ export default function AppShell({ user, children }: AppShellProps) {
         </div>
 
         {/* User Card in Sidebar */}
-        <Link href={user.role === 'admin' ? '/admin/account' : '/teacher/account'} className="sidebar-user-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Link href={accountHref} className="sidebar-user-card" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="user-avatar">{userInitial}</div>
           <div className="user-details">
             <div className="user-name">{user.name}</div>

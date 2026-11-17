@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
+import { allowClass, schoolOwns } from '@/lib/access';
 import { normalizeIndianPhone } from '@/lib/phone';
 import { callN8n } from '@/lib/n8n';
 
@@ -12,7 +13,7 @@ function back(path: string, msg: string, err = false): never {
 }
 
 export async function createTeacher(formData: FormData) {
-  await requireRole('admin');
+  const adm = await requireRole('admin');
   const name = String(formData.get('name') || '').trim();
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
@@ -21,7 +22,7 @@ export async function createTeacher(formData: FormData) {
   if (!phone) back('/admin?tab=teachers', 'Enter a valid Indian mobile number for the teacher', true);
   const hash = await bcrypt.hash(password, 10);
   try {
-    await q(`INSERT INTO att.users (name, email, phone, password_hash, role) VALUES ($1,$2,$3,$4,'teacher')`, [name, email, phone, hash]);
+    await q(`INSERT INTO att.users (name, email, phone, password_hash, role, school_id) VALUES ($1,$2,$3,$4,'teacher',$5)`, [name, email, phone, hash, adm.sid]);
   } catch {
     back('/admin?tab=teachers', 'That email is already used', true);
   }
@@ -30,12 +31,13 @@ export async function createTeacher(formData: FormData) {
 }
 
 export async function createClass(formData: FormData) {
-  await requireRole('admin');
+  const adm = await requireRole('admin');
   const name = String(formData.get('name') || '').trim();
   const teacherId = Number(formData.get('teacher_id')) || null;
   if (!name) back('/admin?tab=classes', 'Class name is required', true);
+  if (teacherId && !(await schoolOwns(adm, 'user', teacherId))) back('/admin?tab=classes', 'Teacher not found', true);
   try {
-    await q(`INSERT INTO att.classes (name, teacher_id) VALUES ($1,$2)`, [name, teacherId]);
+    await q(`INSERT INTO att.classes (name, teacher_id, school_id) VALUES ($1,$2,$3)`, [name, teacherId, adm.sid]);
   } catch {
     back('/admin?tab=classes', 'A class with that name already exists', true);
   }
@@ -44,9 +46,10 @@ export async function createClass(formData: FormData) {
 }
 
 export async function assignTeacher(formData: FormData) {
-  await requireRole('admin');
+  const adm = await requireRole('admin');
   const classId = Number(formData.get('class_id'));
   const teacherId = Number(formData.get('teacher_id')) || null;
+  if (!(await schoolOwns(adm, 'class', classId)) || (teacherId && !(await schoolOwns(adm, 'user', teacherId)))) back('/admin?tab=classes', 'Not found', true);
   await q(`UPDATE att.classes SET teacher_id = $2 WHERE id = $1`, [classId, teacherId]);
   revalidatePath('/admin');
   back('/admin?tab=classes', 'Class teacher updated');
@@ -55,6 +58,7 @@ export async function assignTeacher(formData: FormData) {
 export async function addStudent(formData: FormData) {
   await requireRole('admin');
   const classId = Number(formData.get('class_id'));
+  await allowClass(classId);
   const base = `/admin/students?class=${classId}`;
   const name = String(formData.get('name') || '').trim();
   const roll = Number(formData.get('roll_no')) || 0;
@@ -72,6 +76,7 @@ export async function addStudent(formData: FormData) {
 export async function importStudents(formData: FormData) {
   await requireRole('admin');
   const classId = Number(formData.get('class_id'));
+  await allowClass(classId);
   const base = `/admin/students?class=${classId}`;
   const text = String(formData.get('csv') || '');
   if (!classId) back(base, 'Pick a class first', true);
@@ -96,23 +101,29 @@ export async function importStudents(formData: FormData) {
 }
 
 export async function removeStudent(formData: FormData) {
-  await requireRole('admin');
+  const adm = await requireRole('admin');
   const id = Number(formData.get('student_id'));
   const classId = Number(formData.get('class_id'));
+  if (!(await schoolOwns(adm, 'student', id))) back('/admin/students', 'Student not found', true);
   await q(`UPDATE att.students SET active = FALSE WHERE id = $1`, [id]);
   revalidatePath('/admin/students');
   back(`/admin/students?class=${classId}`, 'Student removed from active list');
 }
 
 export async function retryFailed() {
-  await requireRole('admin');
-  await q(`UPDATE att.message_log SET attempts = 0 WHERE status = 'failed'`);
+  const adm = await requireRole('admin');
+  await q(
+    `UPDATE att.message_log ml SET attempts = 0 FROM att.attendance a JOIN att.students s ON s.id = a.student_id JOIN att.classes c ON c.id = s.class_id
+     WHERE ml.attendance_id = a.id AND ml.status = 'failed' AND c.school_id = $1`,
+    [adm.sid]
+  );
   const sessions = await q(
     `SELECT DISTINCT s.class_id, a.att_date::text AS att_date, a.session
      FROM att.message_log ml
      JOIN att.attendance a ON a.id = ml.attendance_id
-     JOIN att.students s ON s.id = a.student_id
-     WHERE ml.status = 'failed'`
+     JOIN att.students s ON s.id = a.student_id JOIN att.classes c ON c.id = s.class_id
+     WHERE ml.status = 'failed' AND c.school_id = $1`,
+    [adm.sid]
   );
   for (const r of sessions) await callN8n('attendance-submitted', { class_id: r.class_id, att_date: r.att_date, session: r.session });
   revalidatePath('/admin/logs');

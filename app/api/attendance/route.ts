@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   if (date > today || date < minDate) return NextResponse.json({ ok: false, error: 'Date must be within the last 2 days' }, { status: 400 });
 
   await ensureSchema();
-  const holiday = await holidayOn(date);
+  const holiday = await holidayOn(s.sid, date);
   if (holiday) return NextResponse.json({ ok: false, error: `${date} is a holiday (${holiday}). Attendance cannot be marked.` }, { status: 400 });
 
   const own = await q(`SELECT id FROM att.classes WHERE id = $1 AND teacher_id = $2`, [classId, s.uid]);

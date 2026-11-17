@@ -1,5 +1,6 @@
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
+import { requireModule, classesForModule } from '@/lib/modules';
 import { ensureAcademicTables, DAYS, PERIODS } from '@/lib/academic';
 import { saveTimetable, sendTimetable } from '@/lib/academic-actions';
 import ClassPicker from './ClassPicker';
@@ -16,10 +17,8 @@ export default async function TimetableView({
   const s = await requireRole(role);
   await ensureAcademicTables();
   const base = role === 'admin' ? '/admin' : '/teacher';
-  const classes =
-    role === 'admin'
-      ? await q(`SELECT id, name FROM att.classes ORDER BY name`)
-      : await q(`SELECT id, name FROM att.classes WHERE teacher_id = $1 ORDER BY name`, [s.uid]);
+  await requireModule(s, 'timetable', base);
+  const classes = await classesForModule(s, 'timetable');
 
   if (!classes.length) {
     return (

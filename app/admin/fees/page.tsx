@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
+import { requireModule, classesForModule } from '@/lib/modules';
 import { ensureSchema } from '@/lib/academic';
 import { createFeeItem, deleteFeeItem } from '@/lib/fee-actions';
 import { fmtDate, fmtMoney } from '@/lib/format';
@@ -8,10 +9,11 @@ import { fmtDate, fmtMoney } from '@/lib/format';
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string; class?: string }> }) {
-  await requireRole('admin');
+  const s = await requireRole('admin');
   await ensureSchema();
+  await requireModule(s, 'fees', '/admin');
   const sp = await searchParams;
-  const classes = await q<{ id: number; name: string }>(`SELECT id, name FROM att.classes ORDER BY name`);
+  const classes = await classesForModule(s, 'fees');
   const cf = Number(sp.class) || null;
   const items = await q<{ id: number; class_name: string; name: string; amount: string; due_date: string | null; students: string; billed: string; paid: string }>(
     `SELECT fi.id, c.name AS class_name, fi.name, fi.amount, to_char(fi.due_date, 'YYYY-MM-DD') AS due_date,
@@ -20,9 +22,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
             COALESCE(SUM((SELECT SUM(p.amount) FROM att.fee_payments p WHERE p.due_id = d.id)), 0) AS paid
      FROM att.fee_items fi JOIN att.classes c ON c.id = fi.class_id
      LEFT JOIN att.fee_dues d ON d.fee_item_id = fi.id
-     WHERE ($1::int IS NULL OR fi.class_id = $1)
+     WHERE c.school_id = $2 AND ($1::int IS NULL OR fi.class_id = $1)
      GROUP BY fi.id, c.name ORDER BY fi.due_date NULLS LAST, c.name, fi.id DESC`,
-    [cf]
+    [cf, s.sid]
   );
   const billed = items.reduce((a, i) => a + Number(i.billed), 0);
   const paid = items.reduce((a, i) => a + Number(i.paid), 0);

@@ -1,4 +1,5 @@
 import { q } from '@/lib/db';
+import { requireModule } from '@/lib/modules';
 import { requireRole } from '@/lib/session';
 import { ensureSchema } from '@/lib/academic';
 import { addHoliday, deleteHoliday } from '@/lib/holiday-actions';
@@ -7,13 +8,14 @@ import { fmtDate } from '@/lib/format';
 import ConfirmButton from './ConfirmButton';
 
 export default async function HolidaysView({ role, searchParams }: { role: 'admin' | 'teacher'; searchParams: { ok?: string; err?: string } }) {
-  await requireRole(role);
+  const s = await requireRole(role);
   await ensureSchema();
+  await requireModule(s, 'holidays', role === 'admin' ? '/admin' : '/teacher');
   const today = todayIST();
   const rows = await q<{ id: number; d: string; name: string; dow: string }>(
     `SELECT id, to_char(holiday_date, 'YYYY-MM-DD') AS d, name, to_char(holiday_date, 'Dy') AS dow
-     FROM att.holidays WHERE holiday_date >= ($1::date - 60) ORDER BY holiday_date`,
-    [today]
+     FROM att.holidays WHERE school_id = $2 AND holiday_date >= ($1::date - 60) ORDER BY holiday_date`,
+    [today, s.sid]
   );
   const upcoming = rows.filter((r) => r.d >= today);
   const past = rows.filter((r) => r.d < today).reverse();

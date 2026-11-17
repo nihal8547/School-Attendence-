@@ -11,15 +11,15 @@ import ConfirmButton from '@/components/ConfirmButton';
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ params, searchParams }: { params: Promise<{ itemId: string }>; searchParams: Promise<{ ok?: string; err?: string }> }) {
-  await requireRole('admin');
+  const s = await requireRole('admin');
   await ensureSchema();
   const { itemId } = await params;
   const sp = await searchParams;
   const id = Number(itemId);
   const [item] = await q<{ id: number; name: string; amount: string; due_date: string | null; class_name: string }>(
     `SELECT fi.id, fi.name, fi.amount, to_char(fi.due_date, 'YYYY-MM-DD') AS due_date, c.name AS class_name
-     FROM att.fee_items fi JOIN att.classes c ON c.id = fi.class_id WHERE fi.id = $1`,
-    [id]
+     FROM att.fee_items fi JOIN att.classes c ON c.id = fi.class_id WHERE fi.id = $1 AND c.school_id = $2`,
+    [id, s.sid]
   );
   if (!item) notFound();
   const rows = await q<{ due_id: number; roll_no: number; name: string; amount: string; concession: string; paid: string; last_payment: number | null }>(

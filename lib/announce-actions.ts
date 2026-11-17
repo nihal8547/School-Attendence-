@@ -27,7 +27,7 @@ export async function sendAnnouncement(formData: FormData) {
   if (audience === 'all') {
     if (s.role !== 'admin') backTo(path, 'Only the admin can message the whole school', true);
     all = true;
-    signoff = `– ${(await getSchool()).name}`;
+    signoff = `– ${(await getSchool(s.sid)).name}`;
   } else {
     classId = Number(audience);
     await allowClass(classId);
@@ -42,12 +42,12 @@ export async function sendAnnouncement(formData: FormData) {
 
   const text = `📢 *${title}*\n\n${body}\n\n${signoff}`;
   const seen = new Set<string>();
-  const targets = (await guardianTargets(classId)).filter((t) => (seen.has(t.phone) ? false : (seen.add(t.phone), true)));
+  const targets = (await guardianTargets(s.sid, classId)).filter((t) => (seen.has(t.phone) ? false : (seen.add(t.phone), true)));
   if (!targets.length) backTo(path, 'No parents with a WhatsApp number in this audience', true);
 
   const [a] = await q<{ id: number }>(
-    `INSERT INTO att.announcements (title, body, class_id, all_school, created_by, recipients) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-    [title, body, classId, all, s.uid, targets.length]
+    `INSERT INTO att.announcements (title, body, class_id, all_school, created_by, recipients, school_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+    [title, body, classId, all, s.uid, targets.length, s.sid]
   );
   const r = await queueNotices(
     'announcement',

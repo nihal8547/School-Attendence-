@@ -40,14 +40,14 @@ export async function queueNotices(kind: string, items: Notice[], examId: number
 }
 
 /** Parents of active students (opted in), optionally for one class. One row per student and phone. */
-export async function guardianTargets(classId: number | null) {
+export async function guardianTargets(schoolId: number, classId: number | null) {
   return q<{ class_id: number; student_id: number; student_name: string; class_name: string; phone: string; guardian_name: string | null }>(
     `SELECT s.class_id, s.id AS student_id, s.name AS student_name, c.name AS class_name, g.phone, g.name AS guardian_name
      FROM att.guardians g
      JOIN att.students s ON s.id = g.student_id AND s.active
      JOIN att.classes c ON c.id = s.class_id
-     WHERE g.opt_in AND ($1::int IS NULL OR s.class_id = $1)
+     WHERE g.opt_in AND c.school_id = $1 AND ($2::int IS NULL OR s.class_id = $2)
      ORDER BY c.name, s.roll_no, s.id`,
-    [classId]
+    [schoolId, classId]
   );
 }

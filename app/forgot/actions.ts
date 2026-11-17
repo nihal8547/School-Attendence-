@@ -17,15 +17,15 @@ export async function requestOtp(formData: FormData) {
   // old codes (they are stored in the message text) never stay around
   await q(`DELETE FROM att.notice_log WHERE kind = 'otp' AND created_at < now() - interval '1 hour'`);
 
-  const [u] = await q<{ id: number; phone: string | null }>(`SELECT id, phone FROM att.users WHERE email = $1`, [email]);
+  const [u] = await q<{ id: number; phone: string | null; school_id: number | null }>(`SELECT id, phone, school_id FROM att.users WHERE email = $1`, [email]);
   if (u?.phone) {
     const [recent] = await q(`SELECT 1 FROM att.password_resets WHERE user_id = $1 AND expires_at > now() + interval '9 minutes'`, [u.id]);
     if (!recent) {
       // send from this user's own WhatsApp if connected, otherwise from any connected teacher
       const [sender] = await q<{ id: number }>(
         `SELECT c.id FROM att.classes c JOIN att.users t ON t.id = c.teacher_id
-         WHERE t.wa_status = 'connected' ORDER BY (t.id = $1) DESC, c.id LIMIT 1`,
-        [u.id]
+         WHERE t.wa_status = 'connected' AND c.school_id = COALESCE($2, c.school_id) ORDER BY (t.id = $1) DESC, c.id LIMIT 1`,
+        [u.id, u.school_id]
       );
       if (sender) {
         const otp = String(randomInt(100000, 1000000));

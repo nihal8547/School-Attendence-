@@ -1,3 +1,4 @@
+import { requireModule } from '@/lib/modules';
 import { requireRole } from '@/lib/session';
 import { ensureSchema } from '@/lib/academic';
 import { classesFor } from '@/lib/access';
@@ -26,6 +27,7 @@ export default async function ReportsView({
 }) {
   const s = await requireRole(role);
   await ensureSchema();
+  await requireModule(s, 'reports', role === 'admin' ? '/admin' : '/teacher');
   const classes = await classesFor(s);
   const p = parseParams(searchParams, role);
   const ids = await scopeClassIds(s, p.classId);

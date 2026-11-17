@@ -2,7 +2,10 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-export type Session = { uid: number; role: 'admin' | 'teacher'; name: string };
+export type Session = { uid: number; role: 'superadmin' | 'admin' | 'teacher'; name: string; sid: number };
+
+/** sid = school id (0 for the super admin, who belongs to no school). */
+export const homeFor = (role: Session['role']) => (role === 'superadmin' ? '/super' : role === 'admin' ? '/admin' : '/teacher');
 
 const key = () => new TextEncoder().encode(process.env.SESSION_SECRET || 'dev-only-secret');
 
@@ -29,7 +32,10 @@ export async function getSession(): Promise<Session | null> {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, key());
-    return { uid: Number(payload.uid), role: payload.role as Session['role'], name: String(payload.name) };
+    const role = payload.role as Session['role'];
+    // Older sign-ins (before multi-school) have no sid: they belong to school 1.
+    const sid = role === 'superadmin' ? 0 : Number(payload.sid) || 1;
+    return { uid: Number(payload.uid), role, name: String(payload.name), sid };
   } catch {
     return null;
   }
@@ -38,6 +44,6 @@ export async function getSession(): Promise<Session | null> {
 export async function requireRole(role: Session['role']): Promise<Session> {
   const s = await getSession();
   if (!s) redirect('/login');
-  if (s.role !== role) redirect(s.role === 'admin' ? '/admin' : '/teacher');
+  if (s.role !== role) redirect(homeFor(s.role));
   return s;
 }

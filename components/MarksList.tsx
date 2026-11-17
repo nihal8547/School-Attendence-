@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { q } from '@/lib/db';
 import { requireRole } from '@/lib/session';
+import { requireModule, classesForModule } from '@/lib/modules';
 import { ensureAcademicTables } from '@/lib/academic';
 import { createExam } from '@/lib/academic-actions';
 import { todayIST } from '@/lib/n8n';
@@ -16,10 +17,8 @@ export default async function MarksList({
   const s = await requireRole(role);
   await ensureAcademicTables();
   const base = role === 'admin' ? '/admin' : '/teacher';
-  const classes =
-    role === 'admin'
-      ? await q(`SELECT id, name FROM att.classes ORDER BY name`)
-      : await q(`SELECT id, name FROM att.classes WHERE teacher_id = $1 ORDER BY name`, [s.uid]);
+  await requireModule(s, 'marks', base);
+  const classes = await classesForModule(s, 'marks');
 
   if (!classes.length) {
     return (
