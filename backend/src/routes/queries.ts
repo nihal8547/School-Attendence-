@@ -45,6 +45,46 @@ export const queries: Record<string, QueryDef> = {
         : cached(`nav:${s.sid}:${s.role}:${s.uid}`, 30_000, async () => ({ modules: await navModules(s), schoolName: (await getSchool(s.sid)).name })),
   },
 
+  dashboard: {
+    roles: ['admin'],
+    fn: async (s) => {
+      const today = todayIST();
+      const [tot] = await q(
+        `SELECT (SELECT COUNT(*) FROM att.students st JOIN att.classes c ON c.id = st.class_id WHERE c.school_id = $1 AND st.active) AS students,
+                (SELECT COUNT(*) FROM att.classes WHERE school_id = $1) AS classes,
+                (SELECT COUNT(*) FROM att.users WHERE school_id = $1 AND role = 'teacher') AS teachers,
+                (SELECT COUNT(*) FROM att.users WHERE school_id = $1 AND role = 'teacher' AND wa_status = 'connected') AS wa_connected`,
+        [s.sid]
+      );
+      const classes = await q(
+        `SELECT c.id, c.name, u.name AS teacher,
+                (SELECT COUNT(*) FROM att.students st WHERE st.class_id = c.id AND st.active) AS students,
+                COALESCE((SELECT COUNT(*) FROM att.attendance a JOIN att.students st ON st.id = a.student_id WHERE st.class_id = c.id AND a.att_date = $2 AND a.session = 'morning' AND a.status = 'P'), 0) AS m_p,
+                COALESCE((SELECT COUNT(*) FROM att.attendance a JOIN att.students st ON st.id = a.student_id WHERE st.class_id = c.id AND a.att_date = $2 AND a.session = 'morning' AND a.status = 'A'), 0) AS m_a,
+                COALESCE((SELECT COUNT(*) FROM att.attendance a JOIN att.students st ON st.id = a.student_id WHERE st.class_id = c.id AND a.att_date = $2 AND a.session = 'afternoon' AND a.status = 'P'), 0) AS a_p,
+                COALESCE((SELECT COUNT(*) FROM att.attendance a JOIN att.students st ON st.id = a.student_id WHERE st.class_id = c.id AND a.att_date = $2 AND a.session = 'afternoon' AND a.status = 'A'), 0) AS a_a
+         FROM att.classes c LEFT JOIN att.users u ON u.id = c.teacher_id WHERE c.school_id = $1 ORDER BY c.name`,
+        [s.sid, today]
+      );
+      const [msg] = await q(
+        `SELECT COUNT(*) FILTER (WHERE ml.status='sent') AS sent,
+                COUNT(*) FILTER (WHERE ml.status='failed') AS failed,
+                COUNT(*) FILTER (WHERE ml.status IN ('queued','sending')) AS queued
+         FROM att.message_log ml JOIN att.attendance a ON a.id = ml.attendance_id JOIN att.students st ON st.id = a.student_id JOIN att.classes c ON c.id = st.class_id
+         WHERE c.school_id = $1 AND ml.created_at > now() - interval '24 hours'`,
+        [s.sid]
+      );
+      const recent = await q(
+        `SELECT st.name AS student, c.name AS class_name, a.session, a.status, to_char(a.marked_at AT TIME ZONE 'Asia/Kolkata','HH24:MI') AS at, u.name AS by
+         FROM att.attendance a JOIN att.students st ON st.id = a.student_id JOIN att.classes c ON c.id = st.class_id LEFT JOIN att.users u ON u.id = a.marked_by
+         WHERE c.school_id = $1 AND a.att_date = $2 ORDER BY a.marked_at DESC LIMIT 12`,
+        [s.sid, today]
+      );
+      const teachers = await q(`SELECT name, wa_status FROM att.users WHERE school_id = $1 AND role = 'teacher' ORDER BY name`, [s.sid]);
+      return { today, tot, classes, msg, recent, teachers, at: new Date().toISOString() };
+    },
+  },
+
   'admin-home': {
     roles: ['admin'],
     fn: async (s) => ({

@@ -2,6 +2,7 @@ import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import AttendanceForm from '../AttendanceForm';
 import AutoSubmitForm from './AutoSubmitForm';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,9 +50,9 @@ export default async function TeacherHome({
 
       {me?.wa_status !== 'connected' && (
         <div className="msg err">
-          ⚠️ Your WhatsApp device is not connected. Parent messages cannot be delivered.{' '}
+          <Icon n="alert" /> Your WhatsApp device is not connected. Parent messages cannot be delivered.{' '}
           <a href="/teacher/whatsapp" style={{ marginLeft: 6, fontWeight: 600, color: 'inherit' }}>
-            Connect WhatsApp Now →
+            Connect WhatsApp Now <Icon n="arrow-right" />
           </a>
         </div>
       )}
@@ -89,7 +90,7 @@ export default async function TeacherHome({
       </div>
 
       {holiday && (
-        <div className="msg err">🏖️ {date} is a holiday: {holiday}. Attendance cannot be marked for this date.</div>
+        <div className="msg err"><Icon n="sun" /> {date} is a holiday: {holiday}. Attendance cannot be marked for this date.</div>
       )}
 
       {sent && (

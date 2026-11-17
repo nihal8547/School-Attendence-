@@ -2,6 +2,7 @@ import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { sendAnnouncement } from '@/lib/announce-actions';
 import ConfirmButton from './ConfirmButton';
+import Icon from '@/components/Icon';
 
 export default async function AnnouncementsView({ role, searchParams }: { role: 'admin' | 'teacher'; searchParams: { ok?: string; err?: string } }) {
   await requireRole(role);
@@ -18,8 +19,8 @@ export default async function AnnouncementsView({ role, searchParams }: { role: 
         <h1>Announcements</h1>
         <p className="muted" style={{ margin: 0 }}>Send a notice to parents on WhatsApp: PTA meeting, exam dates, school events.</p>
       </div>
-      {searchParams.ok && <div className="msg">✓ {searchParams.ok}</div>}
-      {searchParams.err && <div className="msg err">✕ {searchParams.err}</div>}
+      {searchParams.ok && <div className="msg"><Icon n="check" /> {searchParams.ok}</div>}
+      {searchParams.err && <div className="msg err"><Icon n="x" /> {searchParams.err}</div>}
 
       <form action={sendAnnouncement} className="card">
         <h2>New announcement</h2>

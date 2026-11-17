@@ -1,6 +1,7 @@
 import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { addStudent, importStudents, removeStudent } from '../actions';
+import Icon from '@/components/Icon';
 
 export default async function StudentsPage({
   searchParams,
@@ -22,8 +23,8 @@ export default async function StudentsPage({
         </p>
       </div>
 
-      {sp.ok && <div className="msg">✓ {sp.ok}</div>}
-      {sp.err && <div className="msg err">✕ {sp.err}</div>}
+      {sp.ok && <div className="msg"><Icon n="check" /> {sp.ok}</div>}
+      {sp.err && <div className="msg err"><Icon n="x" /> {sp.err}</div>}
       {!classes.length && (
         <div className="msg err">
           Please create at least one class first under Teachers &amp; Classes.
@@ -145,9 +146,9 @@ export default async function StudentsPage({
         </div>
         {pages > 1 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-            {page > 1 ? <a className="btn ghost" href={`/admin/students?class=${classId}&page=${page - 1}`}>← Previous</a> : <span />}
+            {page > 1 ? <a className="btn ghost" href={`/admin/students?class=${classId}&page=${page - 1}`}><Icon n="arrow-left" /> Previous</a> : <span />}
             <span className="muted">Page {page} of {pages}</span>
-            {page < pages ? <a className="btn ghost" href={`/admin/students?class=${classId}&page=${page + 1}`}>Next →</a> : <span />}
+            {page < pages ? <a className="btn ghost" href={`/admin/students?class=${classId}&page=${page + 1}`}>Next <Icon n="arrow-right" /></a> : <span />}
           </div>
         )}
       </div>

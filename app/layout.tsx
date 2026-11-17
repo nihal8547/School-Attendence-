@@ -4,6 +4,7 @@ import './globals.css';
 import { getSession } from '@/lib/session';
 import AppShell from '@/components/AppShell';
 import PwaRegister from '@/components/PwaRegister';
+import InstallApp from '@/components/InstallApp';
 import MobileTables from '@/components/MobileTables';
 import { getData } from '@/lib/api';
 
@@ -39,6 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <PwaRegister />
         <MobileTables />
+        <InstallApp />
         {s ? (
           <AppShell user={{ uid: s.uid, name: s.name, role: s.role }} modules={modules} schoolName={schoolName}>
             {children}

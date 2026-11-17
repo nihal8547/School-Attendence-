@@ -2,6 +2,7 @@ import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { createGroup, createDefaultGroups, saveGroup, deleteGroup, assignClassGroup } from '@/lib/group-actions';
 import ConfirmButton from '@/components/ConfirmButton';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,11 +27,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
           <p className="muted" style={{ margin: 0 }}>Make groups like Primary and Secondary. Each group has its own modules and grading style, and you put classes into a group.</p>
         </div>
       </div>
-      {sp.ok && <div className="msg">✓ {sp.ok}</div>}
-      {sp.err && <div className="msg err">✕ {sp.err}</div>}
+      {sp.ok && <div className="msg"><Icon n="check" /> {sp.ok}</div>}
+      {sp.err && <div className="msg err"><Icon n="x" /> {sp.err}</div>}
 
       <details className="add-panel" open={!groups.length}>
-        <summary>＋ Add a group</summary>
+        <summary><Icon n="plus" /> Add a group</summary>
         <form action={createGroup} className="row filters" style={{ marginTop: 14 }}>
           <label>Group name<input name="name" required maxLength={60} placeholder="e.g. Primary, High School" /></label>
           <label>

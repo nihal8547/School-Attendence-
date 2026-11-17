@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,8 +29,8 @@ export default async function TeacherDashboard() {
 
       {waStatus !== 'connected' && (
         <div className="msg err">
-          ⚠️ Your WhatsApp device is not connected, so parent messages cannot be delivered.{' '}
-          <Link href="/teacher/whatsapp" style={{ fontWeight: 600, color: 'inherit' }}>Connect WhatsApp →</Link>
+          <Icon n="alert" /> Your WhatsApp device is not connected, so parent messages cannot be delivered.{' '}
+          <Link href="/teacher/whatsapp" style={{ fontWeight: 600, color: 'inherit' }}>Connect WhatsApp <Icon n="arrow-right" /></Link>
         </div>
       )}
 
@@ -56,7 +57,7 @@ export default async function TeacherDashboard() {
           <h2>WhatsApp Details</h2>
           <dl className="kv">
             <dt>Status</dt>
-            <dd><span className={`badge ${waStatus === 'connected' ? 'ok' : 'bad'}`}>{waStatus === 'connected' ? '● Connected' : '○ Disconnected'}</span></dd>
+            <dd><span className={`badge ${waStatus === 'connected' ? 'ok' : 'bad'}`}>{waStatus === 'connected' ? 'Connected' : 'Disconnected'}</span></dd>
             <dt>Sending number</dt><dd>{fmtPhone(me?.phone)}</dd>
             <dt>Device ID</dt><dd>{me?.instance_name || `att_teacher_${s.uid}`}</dd>
             <dt>Messages today</dt>
@@ -81,7 +82,7 @@ export default async function TeacherDashboard() {
               {classes.map((c) => {
                 const cell = (sess: string) => {
                   const r = stat(c.id, sess);
-                  return r ? <span className="badge ok">✓ {r.present} P · {r.absent} A</span> : <span className="badge wait">Not marked</span>;
+                  return r ? <span className="badge ok"><Icon n="check" /> {r.present} P · {r.absent} A</span> : <span className="badge wait">Not marked</span>;
                 };
                 return (
                   <tr key={c.id}>

@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/session';
 import { addHoliday, deleteHoliday } from '@/lib/holiday-actions';
 import { fmtDate } from '@/lib/format';
 import ConfirmButton from './ConfirmButton';
+import Icon from '@/components/Icon';
 
 export default async function HolidaysView({ role, searchParams }: { role: 'admin' | 'teacher'; searchParams: { ok?: string; err?: string } }) {
   await requireRole(role);
@@ -43,8 +44,8 @@ export default async function HolidaysView({ role, searchParams }: { role: 'admi
         <h1>Holiday Calendar</h1>
         <p className="muted" style={{ margin: 0 }}>Attendance cannot be marked on a holiday. Parents can be notified on WhatsApp.</p>
       </div>
-      {searchParams.ok && <div className="msg">✓ {searchParams.ok}</div>}
-      {searchParams.err && <div className="msg err">✕ {searchParams.err}</div>}
+      {searchParams.ok && <div className="msg"><Icon n="check" /> {searchParams.ok}</div>}
+      {searchParams.err && <div className="msg err"><Icon n="x" /> {searchParams.err}</div>}
 
       {role === 'admin' && (
         <div className="card">

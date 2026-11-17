@@ -3,6 +3,7 @@ import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { createExam } from '@/lib/academic-actions';
 import ClassPicker from './ClassPicker';
+import Icon from '@/components/Icon';
 
 export default async function MarksList({
   role,
@@ -31,8 +32,8 @@ export default async function MarksList({
         <p className="muted" style={{ margin: 0 }}>Create an exam, enter subject-wise marks and view the class result with total, percentage and rank.</p>
       </div>
 
-      {searchParams.ok && <div className="msg">✓ {searchParams.ok}</div>}
-      {searchParams.err && <div className="msg err">✕ {searchParams.err}</div>}
+      {searchParams.ok && <div className="msg"><Icon n="check" /> {searchParams.ok}</div>}
+      {searchParams.err && <div className="msg err"><Icon n="x" /> {searchParams.err}</div>}
 
       <div className="card">
         <ClassPicker classes={classes} value={classId} />

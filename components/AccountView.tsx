@@ -1,6 +1,7 @@
 import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { changePassword, updateProfile, saveSchool } from '@/lib/account-actions';
+import Icon from '@/components/Icon';
 
 export default async function AccountView({ role, searchParams }: { role: 'superadmin' | 'admin' | 'teacher'; searchParams: { ok?: string; err?: string } }) {
   await requireRole(role);
@@ -13,8 +14,8 @@ export default async function AccountView({ role, searchParams }: { role: 'super
         <h1>{role === 'admin' ? 'Account & School' : role === 'superadmin' ? 'Super Admin Account' : 'My Account'}</h1>
         <p className="muted" style={{ margin: 0 }}>Your profile, password and sign-in recovery.</p>
       </div>
-      {searchParams.ok && <div className="msg">✓ {searchParams.ok}</div>}
-      {searchParams.err && <div className="msg err">✕ {searchParams.err}</div>}
+      {searchParams.ok && <div className="msg"><Icon n="check" /> {searchParams.ok}</div>}
+      {searchParams.err && <div className="msg err"><Icon n="x" /> {searchParams.err}</div>}
 
       <form action={updateProfile} className="card">
         <h2>Profile</h2>

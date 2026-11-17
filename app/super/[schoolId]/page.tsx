@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { updateSchool, setSchoolActive, setSchoolModules, addSchoolAdmin, resetAdminPassword } from '@/lib/super-actions';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,13 +22,13 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     <>
       <div className="page-head">
         <div>
-          <Link href="/super" className="muted">← All schools</Link>
+          <Link href="/super" className="muted"><Icon n="arrow-left" /> All schools</Link>
           <h1 style={{ marginTop: 6 }}>{school.name} <span className={`badge ${school.active ? 'ok' : 'bad'}`} style={{ verticalAlign: 'middle' }}>{school.active ? 'Active' : 'Suspended'}</span></h1>
           <p className="muted" style={{ margin: 0 }}>{c.teachers} teachers · {c.classes} classes · {c.students} students</p>
         </div>
       </div>
-      {sp.ok && <div className="msg">✓ {sp.ok}</div>}
-      {sp.err && <div className="msg err">✕ {sp.err}</div>}
+      {sp.ok && <div className="msg"><Icon n="check" /> {sp.ok}</div>}
+      {sp.err && <div className="msg err"><Icon n="x" /> {sp.err}</div>}
 
       <form action={setSchoolModules} className="card">
         <input type="hidden" name="school_id" value={id} />
@@ -79,7 +80,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           </table>
         </div>
         <details className="tile-more" style={{ marginTop: 12 }}>
-          <summary>＋ Add another admin</summary>
+          <summary><Icon n="plus" /> Add another admin</summary>
           <form action={addSchoolAdmin} className="row filters" style={{ marginTop: 12 }}>
             <input type="hidden" name="school_id" value={id} />
             <label>Name<input name="name" maxLength={80} /></label>

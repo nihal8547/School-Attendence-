@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Icon from '@/components/Icon';
 
 type Mark = 'P' | 'A' | null;
 type Stu = { id: number; roll: number; name: string; status: Mark };
@@ -135,7 +136,7 @@ export default function AttendanceForm({
               </div>
 
               <span className={`status-label ${isPresent ? 'p' : isAbsent ? 'a' : 'u'}`}>
-                {isPresent ? '✓ Present' : isAbsent ? '✕ Absent' : 'Not marked'}
+                {isPresent ? <><Icon n="check" /> Present</> : isAbsent ? <><Icon n="x" /> Absent</> : 'Not marked'}
               </span>
 
               <div className="mark">
@@ -145,7 +146,7 @@ export default function AttendanceForm({
                   className={`p ${isPresent ? 'on' : ''}`}
                   onClick={() => setStatus(s.id, 'P')}
                 >
-                  ✓
+                  <Icon n="check" size={18} />
                 </button>
                 <button
                   type="button"
@@ -153,7 +154,7 @@ export default function AttendanceForm({
                   className={`a ${isAbsent ? 'on' : ''}`}
                   onClick={() => setStatus(s.id, 'A')}
                 >
-                  ✕
+                  <Icon n="x" size={18} />
                 </button>
               </div>
             </div>

@@ -6,7 +6,7 @@ export type Session = { uid: number; role: 'superadmin' | 'admin' | 'teacher'; n
 
 export const homeFor = (role: Session['role']) => (role === 'superadmin' ? '/super' : role === 'admin' ? '/admin' : '/teacher');
 
-const key = () => new TextEncoder().encode(process.env.SESSION_SECRET || 'dev-only-secret');
+const key = () => new TextEncoder().encode((process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 24 ? process.env.SESSION_SECRET : process.env.NODE_ENV === 'production' ? (() => { throw new Error('SESSION_SECRET must be set (24+ chars)'); })() : 'dev-only-secret'));
 
 /** The API signs the token at login; the web app only keeps it in an httpOnly cookie. */
 export async function setSessionToken(token: string) {

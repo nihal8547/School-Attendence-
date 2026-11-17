@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/session';
 import { sendReceipt } from '@/lib/fee-actions';
 import { fmtDate, fmtMoney } from '@/lib/format';
 import PrintButton from '@/components/PrintButton';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,14 +26,14 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return (
     <>
       <div className="no-print" style={{ marginBottom: 16 }}>
-        <Link href={`/admin/fees/${r.item_id}`} className="muted">← Back to fee</Link>
-        {sp.ok && <div className="msg">✓ {sp.ok}</div>}
-        {sp.err && <div className="msg err">✕ {sp.err}</div>}
+        <Link href={`/admin/fees/${r.item_id}`} className="muted"><Icon n="arrow-left" /> Back to fee</Link>
+        {sp.ok && <div className="msg"><Icon n="check" /> {sp.ok}</div>}
+        {sp.err && <div className="msg err"><Icon n="x" /> {sp.err}</div>}
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <PrintButton />
           <form action={sendReceipt}>
             <input type="hidden" name="payment_id" value={pid} />
-            <button type="submit">📲 Send to parent on WhatsApp</button>
+            <button type="submit"><Icon n="send" /> Send to parent on WhatsApp</button>
           </form>
         </div>
       </div>

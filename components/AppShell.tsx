@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/login/actions';
-import InstallApp from '@/components/InstallApp';
 
 export interface AppShellProps {
   user: {
@@ -68,6 +67,7 @@ export default function AppShell({ user, modules, schoolName, children }: AppShe
 
   type Item = { href: string; label: string; short: string; icon: React.ReactNode; exact: boolean; primary?: boolean; module?: string };
   const adminNav: Item[] = [
+    { href: '/admin/dashboard', label: 'Live Dashboard', short: 'Live', icon: icons.grid, exact: true, primary: true },
     { href: '/admin', label: 'Teachers & Classes', short: 'Teachers', icon: icons.people, exact: true, primary: true },
     { href: '/admin/groups', label: 'Class Groups', short: 'Groups', icon: icons.layers, exact: false },
     { href: '/admin/students', label: 'Students', short: 'Students', icon: icons.cap, exact: false, primary: true },
@@ -189,7 +189,6 @@ export default function AppShell({ user, modules, schoolName, children }: AppShe
           <div className="user-avatar">{userInitial}</div>
           <div className="user-details">
             <div className="user-name">{user.name}</div>
-            <span className={`user-role-badge ${user.role}`}>{user.role}</span>
           </div>
         </Link>
 
@@ -215,7 +214,6 @@ export default function AppShell({ user, modules, schoolName, children }: AppShe
 
         {/* Sidebar Footer with Logout */}
         <div className="sidebar-footer">
-          <InstallApp />
           <form action={logout}>
             <button type="submit" className="logout-btn">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

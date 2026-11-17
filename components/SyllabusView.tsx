@@ -2,6 +2,7 @@ import { getData } from '@/lib/api';
 import { addChapters, setTopicStatus, deleteTopic } from '@/lib/academic2-actions';
 import { fmtDate } from '@/lib/format';
 import { moduleRole, ModuleHead, type ModProps } from './ModuleShell';
+import Icon from '@/components/Icon';
 
 type T = { id: number; subject: string; chapter: string; status: 'pending' | 'in_progress' | 'done'; done_on: string | null };
 
@@ -38,7 +39,7 @@ export default async function SyllabusView({ role, searchParams }: ModProps) {
                     <tbody>
                       {list.map((t) => (
                         <tr key={t.id}>
-                          <td style={{ width: '100%' }}>{t.status === 'done' ? '✅' : t.status === 'in_progress' ? '🟡' : '⚪'} {t.chapter}{t.done_on && <span className="muted"> · {fmtDate(t.done_on)}</span>}</td>
+                          <td style={{ width: '100%' }}><Icon n={t.status === 'done' ? 'check-circle' : t.status === 'in_progress' ? 'half' : 'circle'} /> {t.chapter}{t.done_on && <span className="muted"> · {fmtDate(t.done_on)}</span>}</td>
                           <td>
                             <form action={setTopicStatus} style={{ display: 'flex', gap: 6 }}>
                               <input type="hidden" name="id" value={t.id} />
@@ -46,7 +47,7 @@ export default async function SyllabusView({ role, searchParams }: ModProps) {
                               <button type="submit" className="ghost" style={{ padding: '6px 12px' }}>Save</button>
                             </form>
                           </td>
-                          <td><form action={deleteTopic}><input type="hidden" name="id" value={t.id} /><button type="submit" className="danger" style={{ padding: '6px 10px' }}>✕</button></form></td>
+                          <td><form action={deleteTopic}><input type="hidden" name="id" value={t.id} /><button type="submit" className="danger" style={{ padding: '6px 10px' }}><Icon n="x" /></button></form></td>
                         </tr>
                       ))}
                     </tbody>

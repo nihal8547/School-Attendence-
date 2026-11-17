@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/session';
 import { fmtDate, fmtPhone } from '@/lib/format';
 import AutoSubmitForm from '@/app/teacher/attendance/AutoSubmitForm';
 import PrintButton from './PrintButton';
+import Icon from '@/components/Icon';
 
 const pct = (p: number | string, t: number | string) => (Number(t) ? (Number(p) / Number(t)) * 100 : null);
 
@@ -106,7 +107,7 @@ export default async function ReportsView({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
           <h2 style={{ margin: 0 }}>{fmtDate(p.from)} – {fmtDate(p.to)}</h2>
           <div className="no-print" style={{ display: 'flex', gap: 8 }}>
-            <a className="btn ghost" href={`/api/reports/export?${qs}`}>⬇ Download CSV</a>
+            <a className="btn ghost" href={`/api/reports/export?${qs}`}><Icon n="download" /> Download CSV</a>
             <PrintButton />
           </div>
         </div>
@@ -144,7 +145,7 @@ export default async function ReportsView({
                     <td>{r.roll_no}</td><td><strong>{r.name}</strong></td><td>{fmtPhone(r.phone)}</td>
                   </tr>
                 ))}
-                {!abs.length && <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>No absences in this period 🎉</td></tr>}
+                {!abs.length && <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>No absences in this period</td></tr>}
               </tbody>
             </table>
           </div>

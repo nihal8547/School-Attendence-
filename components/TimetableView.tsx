@@ -5,6 +5,7 @@ import { saveTimetable, sendTimetable } from '@/lib/academic-actions';
 import ClassPicker from './ClassPicker';
 import PrintButton from './PrintButton';
 import ConfirmButton from './ConfirmButton';
+import Icon from '@/components/Icon';
 
 export default async function TimetableView({
   role,
@@ -36,8 +37,8 @@ export default async function TimetableView({
         <p className="muted" style={{ margin: 0 }}>Weekly class timetable. Leave a period empty if there is no class.</p>
       </div>
 
-      {searchParams.ok && <div className="msg">✓ {searchParams.ok}</div>}
-      {searchParams.err && <div className="msg err">✕ {searchParams.err}</div>}
+      {searchParams.ok && <div className="msg"><Icon n="check" /> {searchParams.ok}</div>}
+      {searchParams.err && <div className="msg err"><Icon n="x" /> {searchParams.err}</div>}
 
       <div className="card no-print">
         <ClassPicker classes={classes} value={classId} />

@@ -76,13 +76,13 @@ export default function ConnectPanel({ initial }: { initial: 'connected' | 'disc
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>Device Connection</h2>
         <span className={`badge ${status === 'connected' ? 'ok' : 'bad'}`}>
-          {status === 'connected' ? '● Connected' : '○ Disconnected'}
+          {status === 'connected' ? 'Connected' : 'Disconnected'}
         </span>
       </div>
 
       <p className="muted" style={{ marginTop: 0, marginBottom: 18 }}>
-        To link your WhatsApp: Open WhatsApp on your phone → tap <strong>Menu / Settings</strong> → tap{' '}
-        <strong>Linked Devices</strong> → tap <strong>Link a Device</strong> and scan the QR code below.
+        To link your WhatsApp: Open WhatsApp on your phone then tap <strong>Menu / Settings</strong> then tap{' '}
+        <strong>Linked Devices</strong> then tap <strong>Link a Device</strong> and scan the QR code below.
       </p>
 
       {error && <div className="msg err">{error}</div>}

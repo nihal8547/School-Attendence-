@@ -1,6 +1,7 @@
 import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { retryFailed } from '../actions';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,13 +25,13 @@ export default async function LogsPage({
         </div>
         <form action={retryFailed}>
           <button type="submit" disabled={Number(stats.failed) === 0}>
-            ↻ Retry Failed ({stats.failed})
+            <Icon n="retry" /> Retry Failed ({stats.failed})
           </button>
         </form>
       </div>
 
-      {sp.ok && <div className="msg">✓ {sp.ok}</div>}
-      {sp.err && <div className="msg err">✕ {sp.err}</div>}
+      {sp.ok && <div className="msg"><Icon n="check" /> {sp.ok}</div>}
+      {sp.err && <div className="msg err"><Icon n="x" /> {sp.err}</div>}
 
       {/* Metric Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 20 }}>
@@ -105,7 +106,7 @@ export default async function LogsPage({
                         r.status === 'sent' ? 'ok' : r.status === 'failed' ? 'bad' : 'wait'
                       }`}
                     >
-                      {r.status === 'sent' ? '● Sent' : r.status === 'failed' ? '✕ Failed' : '◌ Queued'}
+                      {r.status === 'sent' ? <><Icon n="check" /> Sent</> : r.status === 'failed' ? <><Icon n="x" /> Failed</> : <><Icon n="clock" /> Queued</>}
                     </span>
                     {r.error && (
                       <div className="muted" style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>
@@ -126,8 +127,8 @@ export default async function LogsPage({
           </table>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-          {page > 1 ? <a className="btn ghost" href={`/admin/logs?page=${page - 1}`}>← Newer</a> : <span />}
-          {hasMore ? <a className="btn ghost" href={`/admin/logs?page=${page + 1}`}>Older →</a> : <span />}
+          {page > 1 ? <a className="btn ghost" href={`/admin/logs?page=${page - 1}`}><Icon n="arrow-left" /> Newer</a> : <span />}
+          {hasMore ? <a className="btn ghost" href={`/admin/logs?page=${page + 1}`}>Older <Icon n="arrow-right" /></a> : <span />}
         </div>
       </div>
     </>

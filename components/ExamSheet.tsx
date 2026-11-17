@@ -7,6 +7,7 @@ import { saveMarks, deleteExam, sendMarksheet } from '@/lib/academic-actions';
 import { sendReportCards } from '@/lib/reportcard-actions';
 import PrintButton from './PrintButton';
 import ConfirmButton from './ConfirmButton';
+import Icon from '@/components/Icon';
 
 function grade(pct: number) {
   if (pct >= 90) return 'A+';
@@ -52,15 +53,15 @@ export default async function ExamSheet({
   return (
     <>
       <div style={{ marginBottom: 20 }} className="no-print">
-        <Link href={`${base}/marks?class=${exam.class_id}`} className="muted">← All exams</Link>
+        <Link href={`${base}/marks?class=${exam.class_id}`} className="muted"><Icon n="arrow-left" /> All exams</Link>
         <h1 style={{ marginTop: 6 }}>{exam.name}</h1>
         <p className="muted" style={{ margin: 0 }}>
           Class {exam.class_name}{exam.date_label ? ` · ${exam.date_label}` : ''} · {subjects.length} subjects · {maxTotal} total marks
         </p>
       </div>
 
-      {searchParams.ok && <div className="msg no-print">✓ {searchParams.ok}</div>}
-      {searchParams.err && <div className="msg err no-print">✕ {searchParams.err}</div>}
+      {searchParams.ok && <div className="msg no-print"><Icon n="check" /> {searchParams.ok}</div>}
+      {searchParams.err && <div className="msg err no-print"><Icon n="x" /> {searchParams.err}</div>}
 
       <form action={saveMarks} className="card no-print">
         <input type="hidden" name="exam_id" value={examId} />
@@ -164,11 +165,11 @@ export default async function ExamSheet({
             <div className="muted">Print or download a report card for each student, or send the PDF to every parent on WhatsApp.</div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Link className="btn ghost" href={`${base}/marks/${examId}/cards`}>🖨 View / print all</Link>
+            <Link className="btn ghost" href={`${base}/marks/${examId}/cards`}><Icon n="printer" /> View / print all</Link>
             <form action={sendReportCards}>
               <input type="hidden" name="exam_id" value={examId} />
               <input type="hidden" name="base" value={base} />
-              <ConfirmButton message={`Send report card PDFs for ${exam.name} to parents on WhatsApp?`}>📄 Send PDFs</ConfirmButton>
+              <ConfirmButton message={`Send report card PDFs for ${exam.name} to parents on WhatsApp?`}><Icon n="file" /> Send PDFs</ConfirmButton>
             </form>
           </div>
         </div>

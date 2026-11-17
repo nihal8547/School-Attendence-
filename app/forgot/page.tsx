@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requestOtp, resetWithOtp } from './actions';
+import Icon from '@/components/Icon';
 
 export const metadata = { title: 'Forgot password | School Attendance' };
 
@@ -55,7 +56,7 @@ export default async function ForgotPage({ searchParams }: { searchParams: Promi
             </form>
           )}
 
-          <p className="auth-foot"><Link href="/login">← Back to sign in</Link></p>
+          <p className="auth-foot"><Link href="/login"><Icon n="arrow-left" /> Back to sign in</Link></p>
         </div>
       </section>
     </div>

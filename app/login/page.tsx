@@ -1,6 +1,6 @@
 import { login } from './actions';
 import LoginForm from './LoginForm';
-import InstallApp from '@/components/InstallApp';
+import Icon from '@/components/Icon';
 
 export const metadata = { title: 'Sign in | School Attendance' };
 
@@ -33,7 +33,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <ul>
             {features.map((f) => (
               <li key={f.t}>
-                <span className="auth-tick">✓</span>
+                <span className="auth-tick"><Icon n="check" size={14} /></span>
                 <div>
                   <strong>{f.t}</strong>
                   <span>{f.d}</span>
@@ -58,10 +58,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <h1>Welcome back</h1>
           <p className="auth-sub">Sign in to continue to your dashboard.</p>
 
-          {reset && <div className="msg" style={{ marginBottom: 16 }}>✓ Password changed. Please sign in with your new password.</div>}
+          {reset && <div className="msg" style={{ marginBottom: 16 }}><Icon n="check" /> Password changed. Please sign in with your new password.</div>}
           <LoginForm action={login} error={!!error} />
 
-          <InstallApp className="auth-install" />
 
           <p className="auth-foot">Don&apos;t have an account? Ask your school admin to add you.</p>
         </div>

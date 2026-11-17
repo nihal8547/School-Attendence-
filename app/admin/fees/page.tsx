@@ -3,6 +3,7 @@ import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { createFeeItem, deleteFeeItem } from '@/lib/fee-actions';
 import { fmtDate, fmtMoney } from '@/lib/format';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +21,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
         <h1>Fees</h1>
         <p className="muted" style={{ margin: 0 }}>Create fees, record payments, print receipts and remind parents on WhatsApp.</p>
       </div>
-      {sp.ok && <div className="msg">✓ {sp.ok}</div>}
-      {sp.err && <div className="msg err">✕ {sp.err}</div>}
+      {sp.ok && <div className="msg"><Icon n="check" /> {sp.ok}</div>}
+      {sp.err && <div className="msg err"><Icon n="x" /> {sp.err}</div>}
 
       <div className="stat-grid">
         <div className="stat-box"><div className="n">{fmtMoney(billed)}</div><div className="l">Total billed</div></div>

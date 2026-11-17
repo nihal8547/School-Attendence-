@@ -4,6 +4,7 @@ import { adminResetPassword } from '@/lib/account-actions';
 import { requireRole } from '@/lib/session';
 import { fmtPhone } from '@/lib/format';
 import { createTeacher, createClass, assignTeacher } from './actions';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,12 +32,12 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
-      {ok && <div className="msg">✓ {ok}</div>}
-      {err && <div className="msg err">✕ {err}</div>}
+      {ok && <div className="msg"><Icon n="check" /> {ok}</div>}
+      {err && <div className="msg err"><Icon n="x" /> {err}</div>}
 
       <nav className="tabs" aria-label="Teachers and classes">
-        <Link href="/admin?tab=teachers" className={`tab ${tab === 'teachers' ? 'active' : ''}`}>👩‍🏫 Teachers <span className="count">{teachers.length}</span></Link>
-        <Link href="/admin?tab=classes" className={`tab ${tab === 'classes' ? 'active' : ''}`}>🏫 Classes <span className="count">{classes.length}</span></Link>
+        <Link href="/admin?tab=teachers" className={`tab ${tab === 'teachers' ? 'active' : ''}`}><Icon n="users" /> Teachers <span className="count">{teachers.length}</span></Link>
+        <Link href="/admin?tab=classes" className={`tab ${tab === 'classes' ? 'active' : ''}`}><Icon n="school" /> Classes <span className="count">{classes.length}</span></Link>
       </nav>
 
       <div className="stat-grid">
@@ -56,7 +57,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
         </div>
 
         <details className="add-panel" open={!teachers.length}>
-          <summary>＋ Add new teacher</summary>
+          <summary><Icon n="plus" /> Add new teacher</summary>
           <form action={createTeacher} className="row filters" style={{ marginTop: 14 }}>
             <label>Full name<input name="name" placeholder="John Doe" required /></label>
             <label>Email (login)<input name="email" type="email" placeholder="teacher@school.com" required /></label>
@@ -78,16 +79,16 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                     <div className="tile-title">{t.name}</div>
                     <div className="tile-sub">{t.email}</div>
                   </div>
-                  <span className={`badge ${on ? 'ok' : 'bad'}`}>{on ? '● WhatsApp' : '○ Offline'}</span>
+                  <span className={`badge ${on ? 'ok' : 'bad'}`}>{on ? 'WhatsApp online' : 'Offline'}</span>
                 </div>
                 <div className="tile-meta">
-                  <span>📞 {fmtPhone(t.phone)}</span>
+                  <span><Icon n="phone" /> {fmtPhone(t.phone)}</span>
                 </div>
                 <div className="chips">
                   {mine.length ? mine.map((c) => <span className="chip" key={c.id}>Class {c.name}</span>) : <span className="muted" style={{ fontSize: 13 }}>No class assigned</span>}
                 </div>
                 <details className="tile-more">
-                  <summary>🔑 Reset password</summary>
+                  <summary><Icon n="key" /> Reset password</summary>
                   <form action={adminResetPassword} style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                     <input type="hidden" name="user_id" value={t.id} />
                     <input name="password" type="text" minLength={8} placeholder="New password (min 8)" required style={{ flex: 1, minWidth: 0 }} />
@@ -110,7 +111,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
         </div>
 
         <details className="add-panel" open={!classes.length}>
-          <summary>＋ Create class section</summary>
+          <summary><Icon n="plus" /> Create class section</summary>
           <form action={createClass} className="row filters" style={{ marginTop: 14 }}>
             <label>Class name<input name="name" placeholder="e.g. 5-A, Grade 10" required /></label>
             <label>

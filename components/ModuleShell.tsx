@@ -1,5 +1,6 @@
 import { requireRole } from '@/lib/session';
 import ClassPicker from './ClassPicker';
+import Icon from '@/components/Icon';
 
 export type ModProps = { role: 'admin' | 'teacher'; searchParams: { class?: string; ok?: string; err?: string } };
 
@@ -16,8 +17,8 @@ export function ModuleHead({ title, intro, searchParams, classes, classId }: { t
           <p className="muted" style={{ margin: 0 }}>{intro}</p>
         </div>
       </div>
-      {searchParams.ok && <div className="msg">✓ {searchParams.ok}</div>}
-      {searchParams.err && <div className="msg err">✕ {searchParams.err}</div>}
+      {searchParams.ok && <div className="msg"><Icon n="check" /> {searchParams.ok}</div>}
+      {searchParams.err && <div className="msg err"><Icon n="x" /> {searchParams.err}</div>}
       {classes.length ? (
         <div className="card"><ClassPicker classes={classes} value={classId} /></div>
       ) : (

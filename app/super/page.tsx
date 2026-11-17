@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { createSchool } from '@/lib/super-actions';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +20,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
           <p className="muted" style={{ margin: 0 }}>Create schools, control which modules each school can use, and manage their admin logins.</p>
         </div>
       </div>
-      {sp.ok && <div className="msg">✓ {sp.ok}</div>}
-      {sp.err && <div className="msg err">✕ {sp.err}</div>}
+      {sp.ok && <div className="msg"><Icon n="check" /> {sp.ok}</div>}
+      {sp.err && <div className="msg err"><Icon n="x" /> {sp.err}</div>}
 
       <div className="stat-grid">
         <div className="stat-box"><div className="n">{schools.length}</div><div className="l">Schools</div></div>
@@ -29,7 +30,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
       </div>
 
       <details className="add-panel" style={{ marginTop: 18 }} open={schools.length === 0}>
-        <summary>＋ Add new school</summary>
+        <summary><Icon n="plus" /> Add new school</summary>
         <form action={createSchool} className="row filters" style={{ marginTop: 14 }}>
           <label>School name<input name="name" required maxLength={100} placeholder="Sunrise Public School" /></label>
           <label>Address<input name="address" maxLength={200} placeholder="Town, District" /></label>
@@ -52,7 +53,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
               <span className={`badge ${s.active ? 'ok' : 'bad'}`}>{s.active ? 'Active' : 'Suspended'}</span>
             </div>
             <div className="tile-meta">
-              <span>👩‍🏫 {s.teachers} teachers</span><span>🏫 {s.classes} classes</span><span>🎓 {s.students} students</span>
+              <span><Icon n="users" /> {s.teachers} teachers</span><span><Icon n="school" /> {s.classes} classes</span><span><Icon n="cap" /> {s.students} students</span>
             </div>
           </Link>
         ))}

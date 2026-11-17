@@ -6,7 +6,7 @@ export async function middleware(req: NextRequest) {
   const loginUrl = new URL('/login', req.url);
   if (!token) return NextResponse.redirect(loginUrl);
   try {
-    const key = new TextEncoder().encode(process.env.SESSION_SECRET || 'dev-only-secret');
+    const key = new TextEncoder().encode((process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 24 ? process.env.SESSION_SECRET : process.env.NODE_ENV === 'production' ? (() => { throw new Error('SESSION_SECRET must be set (24+ chars)'); })() : 'dev-only-secret'));
     const { payload } = await jwtVerify(token, key);
     const path = req.nextUrl.pathname;
     const home = payload.role === 'superadmin' ? '/super' : payload.role === 'admin' ? '/admin' : '/teacher';
@@ -19,4 +19,4 @@ export async function middleware(req: NextRequest) {
   }
 }
 
-export const config = { matcher: ['/super/:path*', '/admin/:path*', '/teacher/:path*', '/api/wa', '/api/attendance'] };
+export const config = { matcher: ['/super/:path*', '/admin/:path*', '/teacher/:path*', '/api/wa', '/api/attendance', '/api/report-card', '/api/reports/:path*'] };

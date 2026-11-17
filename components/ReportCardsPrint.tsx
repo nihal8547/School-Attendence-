@@ -4,6 +4,7 @@ import { getData } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { subjectGrade } from '@/lib/grade';
 import PrintButton from './PrintButton';
+import Icon from '@/components/Icon';
 
 export default async function ReportCardsPrint({ role, examId, studentId }: { role: 'admin' | 'teacher'; examId: number; studentId?: number }) {
   await requireRole(role);
@@ -13,7 +14,7 @@ export default async function ReportCardsPrint({ role, examId, studentId }: { ro
   return (
     <>
       <div className="no-print" style={{ marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Link href={`${base}/marks/${examId}`} className="muted">← Back</Link>
+        <Link href={`${base}/marks/${examId}`} className="muted"><Icon n="arrow-left" /> Back</Link>
         <PrintButton label={`Print ${cards.length} report card${cards.length > 1 ? 's' : ''}`} />
       </div>
       {cards.map((c) => (

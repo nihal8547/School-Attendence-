@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/session';
 import { recordPayment, sendFeeReminders, setConcession } from '@/lib/fee-actions';
 import { fmtDate, fmtMoney } from '@/lib/format';
 import ConfirmButton from '@/components/ConfirmButton';
+import Icon from '@/components/Icon';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,12 +27,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return (
     <>
       <div style={{ marginBottom: 20 }}>
-        <Link href="/admin/fees" className="muted">← All fees</Link>
+        <Link href="/admin/fees" className="muted"><Icon n="arrow-left" /> All fees</Link>
         <h1 style={{ marginTop: 6 }}>{item.name} · {item.class_name}</h1>
         <p className="muted" style={{ margin: 0 }}>{fmtMoney(item.amount)} per student · Due {fmtDate(item.due_date)}</p>
       </div>
-      {sp.ok && <div className="msg">✓ {sp.ok}</div>}
-      {sp.err && <div className="msg err">✕ {sp.err}</div>}
+      {sp.ok && <div className="msg"><Icon n="check" /> {sp.ok}</div>}
+      {sp.err && <div className="msg err"><Icon n="x" /> {sp.err}</div>}
 
       <div className="stat-grid">
         <div className="stat-box"><div className="n">{fmtMoney(billed)}</div><div className="l">Billed</div></div>
@@ -46,7 +47,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           {pending > 0 && (
             <form action={sendFeeReminders}>
               <input type="hidden" name="item_id" value={id} />
-              <ConfirmButton message={`Send a WhatsApp fee reminder to parents of ${pending} student(s)?`}>📲 Remind all pending ({pending})</ConfirmButton>
+              <ConfirmButton message={`Send a WhatsApp fee reminder to parents of ${pending} student(s)?`}><Icon n="send" /> Remind all pending ({pending})</ConfirmButton>
             </form>
           )}
         </div>
@@ -63,7 +64,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                     <td data-label="Fee">{fmtMoney(Number(r.amount) - Number(r.concession))}{Number(r.concession) > 0 && <span className="muted"> (−{fmtMoney(r.concession)})</span>}</td>
                     <td data-label="Paid">{fmtMoney(r.paid)}</td>
                     <td data-label="Balance" style={b > 0.001 ? { color: 'var(--red-ink)', fontWeight: 600 } : undefined}>{fmtMoney(b)}</td>
-                    <td data-label="Status">{b <= 0.001 ? '✅ Paid' : Number(r.paid) > 0 ? '🟡 Partial' : '🔴 Pending'}</td>
+                    <td data-label="Status">{b <= 0.001 ? <><Icon n="check-circle" /> Paid</> : Number(r.paid) > 0 ? <><Icon n="half" /> Partial</> : <><Icon n="x-circle" /> Pending</>}</td>
                     <td>
                       <details>
                         <summary style={{ cursor: 'pointer' }}>Manage</summary>
@@ -92,10 +93,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                             <form action={sendFeeReminders}>
                               <input type="hidden" name="item_id" value={id} />
                               <input type="hidden" name="due_id" value={r.due_id} />
-                              <button type="submit" className="ghost">📲 Remind parent</button>
+                              <button type="submit" className="ghost"><Icon n="send" /> Remind parent</button>
                             </form>
                           )}
-                          {r.last_payment && <Link className="btn ghost" href={`/admin/fees/receipt/${r.last_payment}`}>🧾 Last receipt</Link>}
+                          {r.last_payment && <Link className="btn ghost" href={`/admin/fees/receipt/${r.last_payment}`}><Icon n="receipt" /> Last receipt</Link>}
                         </div>
                       </details>
                     </td>

@@ -1,8 +1,9 @@
 import { getData } from '@/lib/api';
 import { addRemark, deleteRemark } from '@/lib/academic2-actions';
 import { moduleRole, ModuleHead, type ModProps } from './ModuleShell';
+import Icon from '@/components/Icon';
 
-const ICON: Record<string, string> = { achievement: '🏆', behavior: '📌', general: '📝' };
+const ICON: Record<string, string> = { achievement: 'award', behavior: 'pin', general: 'note' };
 
 export default async function RemarksView({ role, searchParams }: ModProps) {
   await moduleRole(role);
@@ -24,7 +25,7 @@ export default async function RemarksView({ role, searchParams }: ModProps) {
                 <select name="student_id" required>{students.map((s) => <option key={s.id} value={s.id}>{s.roll_no}. {s.name}</option>)}</select>
               </label>
               <label>Type
-                <select name="kind" defaultValue="general"><option value="achievement">🏆 Achievement</option><option value="behavior">📌 Behaviour</option><option value="general">📝 General</option></select>
+                <select name="kind" defaultValue="general"><option value="achievement">Achievement</option><option value="behavior">Behaviour</option><option value="general">General</option></select>
               </label>
             </div>
             <label style={{ marginTop: 12 }}>Remark<textarea name="note" rows={3} required maxLength={500} /></label>
@@ -37,7 +38,7 @@ export default async function RemarksView({ role, searchParams }: ModProps) {
             {rows.map((r) => (
               <div className="tile" key={r.id}>
                 <div className="tile-top">
-                  <div className="avatar" style={{ fontSize: 18 }}>{ICON[r.kind]}</div>
+                  <div className="avatar" style={{ fontSize: 18 }}><Icon n={ICON[r.kind] ?? 'note'} size={20} /></div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="tile-title">{r.student}</div>
                     <div className="tile-sub">{r.created}{r.by ? ` · ${r.by}` : ''}</div>
