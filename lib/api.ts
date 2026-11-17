@@ -23,7 +23,8 @@ export async function getData<T = any>(name: string, params: Record<string, stri
   let res: Response;
   try {
     res = await apiFetch(`/v1/q/${name}${qs.size ? `?${qs}` : ''}`);
-  } catch {
+  } catch (e) {
+    console.error('[api] cannot reach API at', API, (e as any)?.cause?.code || (e as Error).message);
     throw new Error('The server is busy. Please refresh in a moment.');
   }
   if (res.status === 401) redirect('/login');
